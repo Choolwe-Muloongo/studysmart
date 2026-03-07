@@ -1,0 +1,485 @@
+<?php
+session_start();
+require_once 'config/database.php';
+require_once 'classes/Subscription.php';
+
+$db = new Database();
+$subscription = new Subscription();
+
+// Get active subscription plans
+$plans = $subscription->getSubscriptionPlans();
+
+// Redirect if already logged in
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
+    $role = $_SESSION['role'];
+    switch ($role) {
+        case 'admin':
+            header('Location: admin/dashboard.php');
+            break;
+        case 'lecturer':
+            header('Location: lecturer/courses.php');
+            break;
+        case 'student':
+            header('Location: student/dashboard.php');
+            break;
+    }
+    exit();
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind Shift - Online Learning Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .hero-section {
+            background: rgba(0, 0, 0, 0.95);
+            color: #FF69B4;
+            padding: 100px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.3);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 105, 180, 0.4);
+            color: white;
+        }
+
+        .btn-secondary-custom {
+            background: transparent;
+            border: 2px solid #FF69B4;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            color: #FF69B4;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary-custom:hover {
+            background: #FF69B4;
+            color: #000000;
+            transform: translateY(-3px);
+        }
+
+        .features-section {
+            padding: 80px 0;
+            background: #000000;
+            color: #FF69B4;
+        }
+
+        .features-section h2,
+        .features-section h4,
+        .features-section p {
+            color: #FF69B4;
+        }
+
+        .features-section .text-muted {
+            color: #FFB6C1 !important;
+        }
+
+        .feature-card {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+            border: 2px solid transparent;
+            color: #FF69B4;
+        }
+
+        .feature-card h4 {
+            color: #FF69B4;
+        }
+
+        .feature-card p {
+            color: #FFB6C1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(255, 105, 180, 0.2);
+            border-color: #FF69B4;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        .pricing-section {
+            padding: 80px 0;
+            background: #000000;
+            color: #FF69B4;
+        }
+
+        .pricing-section h2,
+        .pricing-section p {
+            color: #FF69B4;
+        }
+
+        .pricing-section .text-muted {
+            color: #FFB6C1 !important;
+        }
+
+        .pricing-card {
+            background: #1a1a1a;
+            border-radius: 25px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            color: #FF69B4;
+        }
+
+        .pricing-card h3 {
+            color: #FF69B4;
+        }
+
+        .pricing-card p {
+            color: #FFB6C1;
+        }
+
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #FF69B4 0%, #FF1493 100%);
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 60px rgba(255, 105, 180, 0.3);
+        }
+
+        .pricing-card.featured {
+            border: 3px solid #FF69B4;
+            transform: scale(1.05);
+        }
+
+        .pricing-card.featured::before {
+            height: 8px;
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 20px 0;
+        }
+
+        .price-featured {
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-custom {
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            padding: 15px 0;
+        }
+
+        .navbar-toggler {
+            border-color: #FF69B4;
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 105, 180, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-link {
+            color: #FF69B4;
+            font-weight: 500;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #FF69B4;
+        }
+
+        .btn-nav {
+            background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nav:hover {
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
+            color: white;
+        }
+
+        .footer {
+            background: #000000;
+            color: #FF69B4;
+            padding: 50px 0 20px;
+        }
+
+        .footer h5,
+        .footer p,
+        .footer a {
+            color: #FF69B4;
+        }
+
+        .footer a:hover {
+            color: #FF1493;
+        }
+
+        .footer .text-white {
+            color: #FF69B4 !important;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg nav-custom fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-graduation-cap me-2"></i>Mind Shift</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
+                    <li class="nav-item"><a href="register.php" class="btn btn-nav">Sign Up</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content text-center">
+                <h1 class="hero-title">Learn Without Limits</h1>
+                <p class="hero-subtitle">Access premium courses, resources, and expert tutoring at your own pace</p>
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a href="register.php" class="btn btn-primary-custom">
+                        <i class="fas fa-rocket me-2"></i>Get Started
+                    </a>
+                    <a href="login.php" class="btn btn-secondary-custom">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-4 fw-bold mb-3" style="color: #FF69B4;">Why Choose Mind Shift?</h2>
+                <p class="lead" style="color: #FFB6C1;">Everything you need to succeed in your studies</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-book-open"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Premium Courses</h4>
+                        <p style="color: #FFB6C1;">Access to high-quality courses taught by expert lecturers</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-video"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Video Resources</h4>
+                        <p style="color: #FFB6C1;">Watch and learn from comprehensive video tutorials</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Live Sessions</h4>
+                        <p style="color: #FFB6C1;">Join interactive tutoring sessions with your lecturers</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Study Materials</h4>
+                        <p style="color: #FFB6C1;">Download and access comprehensive study resources</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Track Progress</h4>
+                        <p style="color: #FFB6C1;">Monitor your learning progress and grades</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                        <h4 class="fw-bold mb-3" style="color: #FF69B4;">Learn Anywhere</h4>
+                        <p style="color: #FFB6C1;">Access your courses from any device, anytime</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricing" class="pricing-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-4 fw-bold mb-3" style="color: #FF69B4;">Choose Your Plan</h2>
+                <p class="lead" style="color: #FFB6C1;">Flexible subscription options to fit your learning needs</p>
+            </div>
+            <div class="row g-4 justify-content-center">
+                <?php if (empty($plans)): ?>
+                    <div class="col-12 text-center">
+                        <p style="color: #FFB6C1;">Subscription plans coming soon!</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($plans as $index => $plan): ?>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="pricing-card <?php echo $index === 1 ? 'featured' : ''; ?>">
+                                <h3 class="fw-bold mb-3" style="color: #FF69B4;"><?php echo ucfirst(str_replace('_', ' ', $plan['subscription_type'])); ?></h3>
+                                <div class="price <?php echo $index === 1 ? 'price-featured' : ''; ?>">
+                                    K<?php echo number_format($plan['price'], 2); ?>
+                                </div>
+                                <p class="mb-4" style="color: #FFB6C1;"><?php echo $plan['period_days']; ?> Days</p>
+                                <?php if ($plan['description']): ?>
+                                    <p class="mb-4" style="color: #FFB6C1;"><?php echo htmlspecialchars($plan['description']); ?></p>
+                                <?php endif; ?>
+                                <a href="register.php?plan=<?php echo $plan['id']; ?>" class="btn btn-primary-custom w-100">
+                                    Subscribe Now
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-graduation-cap me-2"></i>Mind Shift</h5>
+                    <p>Your trusted online learning platform for quality education.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="mb-3">Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="login.php" class="text-white text-decoration-none">Login</a></li>
+                        <li><a href="register.php" class="text-white text-decoration-none">Register</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+            <div class="text-center">
+                <p>&copy; <?php echo date('Y'); ?> Mind Shift. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
