@@ -1,12 +1,17 @@
 <?php
 // Database configuration for StudySmart Platform
-define('APP_NAME', 'StudySmart');
-define('APP_URL', 'http://localhost/chosen');
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'u972712031_studysmart1');
-define('DB_USER', 'u972712031_studysmart1');
-define('DB_PASS', '>3QitoMpr5');
-define('DB_CHARSET', 'utf8mb4');
+function envOrDefault($key, $default = '') {
+    $value = getenv($key);
+    return ($value === false || $value === '') ? $default : $value;
+}
+
+define('APP_NAME', envOrDefault('APP_NAME', 'StudySmart'));
+define('APP_URL', envOrDefault('APP_URL', 'http://localhost/chosen'));
+define('DB_HOST', envOrDefault('DB_HOST', '127.0.0.1'));
+define('DB_NAME', envOrDefault('DB_NAME', 'u972712031_studysmart1'));
+define('DB_USER', envOrDefault('DB_USER', 'u972712031_studysmart1'));
+define('DB_PASS', envOrDefault('DB_PASS', '>3QitoMpr5'));
+define('DB_CHARSET', envOrDefault('DB_CHARSET', 'utf8mb4'));
 
 // File upload configuration
 define('UPLOAD_PATH', __DIR__ . '/../uploads/');
