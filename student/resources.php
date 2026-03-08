@@ -26,6 +26,7 @@ $offset = ($page - 1) * $per_page;
 
 $course_filter = isset($_GET['course']) ? (int)$_GET['course'] : 0;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$file_type_filter = isset($_GET['file_type']) ? strtolower(trim($_GET['file_type'])) : '';
 
 // Build query
 $where_conditions = ["e.student_id = ?", "r.is_active = 1", "e.is_active = 1", "r.resource_type != 'video'"];
@@ -41,6 +42,15 @@ if (!empty($search)) {
     $search_param = "%{$search}%";
     $params[] = $search_param;
     $params[] = $search_param;
+}
+
+
+if (!empty($file_type_filter)) {
+    $allowed_types = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
+    if (in_array($file_type_filter, $allowed_types, true)) {
+        $where_conditions[] = "LOWER(SUBSTRING_INDEX(r.file_path, '.', -1)) = ?";
+        $params[] = $file_type_filter;
+    }
 }
 
 $where_clause = implode(' AND ', $where_conditions);
@@ -131,6 +141,8 @@ $enrolled_courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c 
             <div class="nav-item"><a href="courses.php" class="nav-link"><i class="fas fa-book"></i><span>My Courses</span></a></div>
             <div class="nav-item"><a href="resources.php" class="nav-link active"><i class="fas fa-file-alt"></i><span>Resources</span></a></div>
             <div class="nav-item"><a href="videos.php" class="nav-link"><i class="fas fa-video"></i><span>Videos</span></a></div>
+            <div class="nav-item"><a href="music.php" class="nav-link"><i class="fas fa-music"></i><span>Music</span></a></div>
+            <div class="nav-item"><a href="timetable.php" class="nav-link"><i class="fas fa-table"></i><span>Timetable</span></a></div>
             <div class="nav-item"><a href="sessions.php" class="nav-link"><i class="fas fa-calendar-alt"></i><span>Sessions</span></a></div>
             <div class="nav-item"><a href="calendar.php" class="nav-link"><i class="fas fa-calendar"></i><span>Calendar</span></a></div>
             <div class="nav-item"><a href="grades.php" class="nav-link"><i class="fas fa-chart-line"></i><span>Grades</span></a></div>
@@ -172,8 +184,14 @@ $enrolled_courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c 
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                            <select name="file_type" class="form-select form-select-sm" style="max-width: 160px;">
+                                <option value="">All Types</option>
+                                <?php foreach (['pdf','doc','docx','ppt','pptx','txt','jpg','jpeg','png','gif'] as $ft): ?>
+                                    <option value="<?php echo $ft; ?>" <?php echo $file_type_filter === $ft ? 'selected' : ''; ?>><?php echo strtoupper($ft); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                             <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i></button>
-                            <?php if ($course_filter > 0 || !empty($search)): ?>
+                            <?php if ($course_filter > 0 || !empty($search) || !empty($file_type_filter)): ?>
                                 <a href="resources.php" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a>
                             <?php endif; ?>
                         </form>
@@ -201,7 +219,7 @@ $enrolled_courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c 
                         elseif ($ext === 'txt') $icon_class = 'txt';
                     ?>
                     <div class="col-md-6 col-lg-4">
-                        <a href="?view=<?php echo $r['id']; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" class="text-decoration-none">
+                        <a href="?view=<?php echo $r['id']; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($file_type_filter) ? '&file_type=' . urlencode($file_type_filter) : ''; ?>" class="text-decoration-none">
                             <div class="resource-card card h-100">
                                 <div class="card-body d-flex align-items-center gap-3">
                                     <div class="resource-icon <?php echo $icon_class; ?>">
@@ -210,6 +228,7 @@ $enrolled_courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c 
                                     <div>
                                         <h6 class="mb-1 text-dark"><?php echo htmlspecialchars($r['title']); ?></h6>
                                         <small class="text-muted"><?php echo htmlspecialchars($r['course_title']); ?></small>
+                                        <br><small class="text-muted"><?php echo number_format((int)($r['views_count'] ?? 0)); ?> views</small>
                                         <br><small class="text-muted"><?php echo date('M j, Y', strtotime($r['created_at'])); ?></small>
                                     </div>
                                 </div>
@@ -224,15 +243,15 @@ $enrolled_courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c 
                 <nav aria-label="Page navigation" class="mt-4">
                     <ul class="pagination justify-content-center">
                         <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                            <a class="page-link" href="?page=<?php echo $page - 1; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>">Previous</a>
+                            <a class="page-link" href="?page=<?php echo $page - 1; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($file_type_filter) ? '&file_type=' . urlencode($file_type_filter) : ''; ?>">Previous</a>
                         </li>
                         <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
                             <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                <a class="page-link" href="?page=<?php echo $i; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>"><?php echo $i; ?></a>
+                                <a class="page-link" href="?page=<?php echo $i; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($file_type_filter) ? '&file_type=' . urlencode($file_type_filter) : ''; ?>"><?php echo $i; ?></a>
                             </li>
                         <?php endfor; ?>
                         <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                            <a class="page-link" href="?page=<?php echo $page + 1; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>">Next</a>
+                            <a class="page-link" href="?page=<?php echo $page + 1; ?><?php echo $course_filter > 0 ? '&course=' . $course_filter : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($file_type_filter) ? '&file_type=' . urlencode($file_type_filter) : ''; ?>">Next</a>
                         </li>
                     </ul>
                 </nav>

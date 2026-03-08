@@ -91,17 +91,17 @@ if (!empty($view_video['video_url'])) {
                     
                     <div class="controls-bottom">
                         <div class="controls-left">
-                            <button id="skipBackward" class="control-btn" title="Skip -10s">
+                            <button id="skipBackward" class="control-btn" title="Skip back 10 seconds (←)" aria-label="Skip back 10 seconds" data-label="Back 10s">
                                 <i class="fas fa-backward"></i>
                             </button>
-                            <button id="playPause" class="control-btn play-pause-btn" title="Play/Pause">
+                            <button id="playPause" class="control-btn play-pause-btn primary-action" title="Play or pause (Space)" aria-label="Play or pause" data-label="Play / Pause">
                                 <i class="fas fa-play"></i>
                             </button>
-                            <button id="skipForward" class="control-btn" title="Skip +10s">
+                            <button id="skipForward" class="control-btn" title="Skip forward 10 seconds (→)" aria-label="Skip forward 10 seconds" data-label="Forward 10s">
                                 <i class="fas fa-forward"></i>
                             </button>
                             <div class="volume-container">
-                                <button id="muteBtn" class="control-btn" title="Mute/Unmute">
+                                <button id="muteBtn" class="control-btn" title="Mute or unmute" aria-label="Mute or unmute" data-label="Mute">
                                     <i class="fas fa-volume-up"></i>
                                 </button>
                                 <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" title="Volume">
@@ -111,26 +111,65 @@ if (!empty($view_video['video_url'])) {
                                 <span class="separator">/</span>
                                 <span id="duration">00:00</span>
                             </div>
+                            <div class="speed-container" title="Playback speed">
+                                <label for="speedSelect" class="speed-label">Speed</label>
+                                <select id="speedSelect" class="speed-select" aria-label="Playback speed">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="0.75">0.75x</option>
+                                    <option value="1" selected>1x</option>
+                                    <option value="1.25">1.25x</option>
+                                    <option value="1.5">1.5x</option>
+                                    <option value="1.75">1.75x</option>
+                                    <option value="2">2x</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="controls-right">
-                            <button id="rotateBtn" class="control-btn" title="Rotate" aria-label="Rotate video">
+                            <button id="saveVideoOffline" class="control-btn" title="Save for offline viewing" aria-label="Save video offline" data-label="Offline">
+                                <i class="fas fa-cloud-download-alt"></i>
+                            </button>
+                            <button id="tutorialBtn" class="control-btn" title="How to use this player" aria-label="Open playback tutorial" data-label="Help">
+                                <i class="fas fa-question-circle"></i>
+                            </button>
+                            <button id="rotateBtn" class="control-btn" title="Rotate video (R)" aria-label="Rotate video" data-label="Rotate">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button id="fullscreenBtn" class="control-btn" title="Fullscreen">
+                            <button id="fullscreenBtn" class="control-btn primary-action" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen" data-label="Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
                         </div>
                     </div>
                     
                     <!-- Floating fullscreen button for touch devices (always available on mobile) -->
-                    <button id="fullscreenFloating" class="control-btn fullscreen-floating" title="Fullscreen" aria-label="Toggle Fullscreen (mobile)">
+                    <button id="fullscreenFloating" class="control-btn fullscreen-floating primary-action" title="Toggle fullscreen" aria-label="Toggle Fullscreen (mobile)">
                         <i class="fas fa-expand"></i>
                     </button>
+                </div>
+
+                <div class="button-legend" aria-hidden="true">
+                    <span><i class="fas fa-keyboard me-1"></i>Space</span>
+                    <span>←/→ 10s</span>
+                    <span>F Fullscreen</span>
+                    <span>R Rotate</span>
                 </div>
                 
                 <div id="videoError" class="alert alert-danger d-none mt-2">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <span id="errorMessage">Video failed to load. Please try again.</span>
+                </div>
+
+                <div id="quickTutorial" class="quick-tutorial">
+                    <div class="tutorial-header">
+                        <strong><i class="fas fa-play-circle me-2"></i>StudySmart Player Tips</strong>
+                        <button id="tutorialClose" class="tutorial-close" aria-label="Close tutorial">×</button>
+                    </div>
+                    <ul>
+                        <li><strong>Tap/Click</strong> video to Play/Pause</li>
+                        <li><strong>Double-tap/click</strong> left/right to skip 10s</li>
+                        <li><strong>Swipe up/down</strong> right side for volume, left side for brightness</li>
+                        <li><strong>F</strong> fullscreen, <strong>Space</strong> play/pause, <strong>←/→</strong> seek</li>
+                        <li><strong>R</strong> rotate only if you want landscape</li>
+                    </ul>
                 </div>
 
                 <div class="alert alert-info mt-2">
@@ -185,8 +224,9 @@ if (!empty($view_video['video_url'])) {
 
 .custom-video-wrapper video {
     width: 100%;
+    height: min(70vh, calc(100vh - 220px));
     display: block;
-    max-height: 70vh;
+    object-fit: contain;
     cursor: pointer;
 }
 
@@ -256,6 +296,15 @@ if (!empty($view_video['video_url'])) {
         right: 12px;
         padding: 14px 16px;
         font-size: 20px;
+    }
+
+    .custom-video-wrapper video {
+        height: min(62vh, calc(100vh - 210px));
+    }
+
+    .quick-tutorial {
+        max-width: none;
+        font-size: 12px;
     }
 }
 
@@ -380,6 +429,7 @@ if (!empty($view_video['video_url'])) {
     align-items: center;
     gap: 10px;
     flex: 1;
+    flex-wrap: wrap;
 }
 
 .controls-right {
@@ -394,13 +444,42 @@ if (!empty($view_video['video_url'])) {
     font-size: 18px;
     cursor: pointer;
     padding: 8px 12px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 5px;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .control-btn:hover {
     background: rgba(255,255,255,0.2);
     transform: scale(1.1);
+}
+
+.control-btn:focus-visible {
+    outline: 2px solid #8ab4ff;
+    outline-offset: 2px;
+}
+
+.primary-action {
+    background: linear-gradient(135deg, rgba(102,126,234,0.55) 0%, rgba(118,75,162,0.55) 100%);
+    border: 1px solid rgba(255,255,255,0.28);
+}
+
+.control-btn[data-label]:hover::after,
+.control-btn[data-label]:focus-visible::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 .play-pause-btn {
@@ -454,6 +533,177 @@ if (!empty($view_video['video_url'])) {
     opacity: 0.7;
 }
 
+.speed-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+}
+
+.speed-label {
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    margin: 0;
+}
+
+.speed-select {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    outline: none;
+}
+
+.speed-select option {
+    color: #222;
+}
+
+.quick-tutorial {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    max-width: 440px;
+    background: rgba(18, 20, 35, 0.88);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 10px;
+    padding: 10px 12px;
+    z-index: 110;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+
+.quick-tutorial.hide {
+    display: none;
+}
+
+.quick-tutorial ul {
+    margin: 8px 0 0;
+    padding-left: 16px;
+    font-size: 13px;
+}
+
+.quick-tutorial li {
+    margin-bottom: 4px;
+}
+
+.tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.tutorial-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.button-legend {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    background: rgba(14, 15, 27, 0.9);
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.button-legend span {
+    color: #c7d2fe;
+    font-size: 11px;
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(129,140,248,0.35);
+    border-radius: 999px;
+    padding: 3px 8px;
+}
+
+
+@media (max-width: 992px) {
+    .controls-bottom {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .controls-left,
+    .controls-right {
+        width: 100%;
+    }
+
+    .controls-right {
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .volume-container {
+        margin-left: 0;
+    }
+
+    .time-display,
+    .speed-container {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .custom-controls {
+        padding: 10px;
+    }
+
+    .control-btn {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 6px 9px;
+        font-size: 16px;
+    }
+
+    .play-pause-btn {
+        font-size: 20px;
+    }
+
+    .controls-left {
+        gap: 6px;
+    }
+
+    .controls-right {
+        gap: 6px;
+    }
+
+    #volumeSlider {
+        width: 64px;
+    }
+
+    .time-display {
+        font-size: 12px;
+    }
+
+    .speed-label {
+        display: none;
+    }
+
+    .speed-select {
+        font-size: 11px;
+        padding: 2px 6px;
+        max-width: 64px;
+    }
+
+    .button-legend {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+
+    .button-legend span {
+        font-size: 10px;
+    }
+}
+
 /* Prevent text selection */
 .custom-video-wrapper {
     -webkit-user-select: none;
@@ -491,6 +741,22 @@ if (!empty($view_video['video_url'])) {
     const currentTimeEl = document.getElementById('currentTime');
     const durationEl = document.getElementById('duration');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const tutorialBtn = document.getElementById('tutorialBtn');
+    const tutorialBox = document.getElementById('quickTutorial');
+    const tutorialClose = document.getElementById('tutorialClose');
+    const speedSelect = document.getElementById('speedSelect');
+
+    if (!playPauseBtn || !skipBackwardBtn || !skipForwardBtn || !muteBtn || !volumeSlider || !progressBar || !progressFilled || !currentTimeEl || !durationEl || !fullscreenBtn) {
+        console.warn('Player controls missing; skipping advanced bindings');
+        return;
+    }
+
+    const updateMuteIcon = () => {
+        muteBtn.innerHTML = video.muted || video.volume === 0
+            ? '<i class="fas fa-volume-mute"></i>'
+            : '<i class="fas fa-volume-up"></i>';
+    };
+
     // Improve accessibility and ensure visibility
     if (fullscreenBtn) {
         fullscreenBtn.setAttribute('aria-label', 'Toggle Fullscreen');
@@ -498,33 +764,22 @@ if (!empty($view_video['video_url'])) {
         fullscreenBtn.style.position = 'relative';
     }
 
-    // Orientation helpers (attempt to lock to landscape when entering fullscreen)
-    function tryLockLandscape() {
-        try {
-            const so = screen.orientation || screen;
-            if (so && so.lock) {
-                so.lock('landscape').catch(err => console.warn('Orientation lock failed:', err));
-            } else if (screen.lockOrientation) {
-                try { screen.lockOrientation('landscape'); } catch (e) { console.warn('Orientation lock (legacy) failed:', e); }
-            } else {
-                console.warn('Orientation lock not supported in this browser');
-            }
-        } catch (ex) {
-            console.warn('Orientation lock error', ex);
-        }
+    // Tutorial visibility memory
+    const tutorialDismissed = localStorage.getItem('studysmart_player_tutorial_dismissed') === '1';
+    if (tutorialDismissed && tutorialBox) tutorialBox.classList.add('hide');
+    if (tutorialClose) {
+        tutorialClose.addEventListener('click', () => {
+            tutorialBox?.classList.add('hide');
+            localStorage.setItem('studysmart_player_tutorial_dismissed', '1');
+        });
     }
-    function tryUnlockOrientation() {
-        try {
-            const so = screen.orientation || screen;
-            if (so && so.unlock) {
-                so.unlock();
-            } else if (screen.unlockOrientation) {
-                try { screen.unlockOrientation(); } catch (e) { console.warn('Orientation unlock (legacy) failed:', e); }
-            }
-        } catch (ex) {
-            console.warn('Orientation unlock error', ex);
-        }
+    if (tutorialBtn) {
+        tutorialBtn.addEventListener('click', () => {
+            if (!tutorialBox) return;
+            tutorialBox.classList.toggle('hide');
+        });
     }
+
 
     // Mobile floating fullscreen button (visible on touch devices)
     const fullscreenFloating = document.getElementById('fullscreenFloating');
@@ -550,8 +805,6 @@ if (!empty($view_video['video_url'])) {
                 } else if (!fsRequest && video.webkitRequestFullscreen) {
                     video.webkitRequestFullscreen();
                 }
-                // Try to lock after a short delay when fullscreen has been entered
-                setTimeout(() => tryLockLandscape(), 300);
             } else {
                 // Exit fullscreen
                 if (document.exitFullscreen) {
@@ -563,8 +816,6 @@ if (!empty($view_video['video_url'])) {
                 } else if (document.msExitFullscreen) {
                     document.msExitFullscreen();
                 }
-                // unlock when exiting
-                setTimeout(() => tryUnlockOrientation(), 200);
             }
         });
     }
@@ -595,13 +846,6 @@ if (!empty($view_video['video_url'])) {
         const icon = isFS ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
         if (fullscreenBtn) fullscreenBtn.innerHTML = icon;
         if (fullscreenFloating) fullscreenFloating.innerHTML = icon;
-        if (isFS) {
-            // When entering fullscreen, attempt to lock
-            tryLockLandscape();
-        } else {
-            // When leaving fullscreen, unlock
-            tryUnlockOrientation();
-        }
     });
     const customControls = document.getElementById('customControls');
     const errorDiv = document.getElementById('videoError');
@@ -614,6 +858,22 @@ if (!empty($view_video['video_url'])) {
             source.src = streamUrl;
             video.load();
         }
+    }
+
+
+    const saveVideoOfflineBtn = document.getElementById('saveVideoOffline');
+    if (saveVideoOfflineBtn && 'caches' in window && streamUrl) {
+        saveVideoOfflineBtn.addEventListener('click', async () => {
+            try {
+                const cache = await caches.open('studysmart-offline-media-v1');
+                await cache.add(streamUrl);
+                saveVideoOfflineBtn.innerHTML = '<i class="fas fa-check"></i>';
+                saveVideoOfflineBtn.setAttribute('data-label', 'Saved');
+                saveVideoOfflineBtn.disabled = true;
+            } catch (e) {
+                console.warn('Save offline failed', e);
+            }
+        });
     }
 
     // Detect touch devices and show custom controls on interaction
@@ -843,19 +1103,15 @@ if (!empty($view_video['video_url'])) {
     // Mute/Unmute
     muteBtn.addEventListener('click', () => {
         video.muted = !video.muted;
-        muteBtn.innerHTML = video.muted 
-            ? '<i class="fas fa-volume-mute"></i>' 
-            : '<i class="fas fa-volume-up"></i>';
         volumeSlider.value = video.muted ? 0 : video.volume;
+        updateMuteIcon();
     });
     
     // Volume control
     volumeSlider.addEventListener('input', (e) => {
         video.volume = e.target.value;
         video.muted = e.target.value == 0;
-        muteBtn.innerHTML = video.muted 
-            ? '<i class="fas fa-volume-mute"></i>' 
-            : '<i class="fas fa-volume-up"></i>';
+        updateMuteIcon();
     });
     
     // Progress bar click
@@ -888,8 +1144,6 @@ if (!empty($view_video['video_url'])) {
                 });
             }
             fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
-            // Try to lock to landscape shortly after entering fullscreen
-            setTimeout(() => tryLockLandscape(), 300);
         } else {
             // Exit fullscreen
             if (document.exitFullscreen) {
@@ -902,11 +1156,54 @@ if (!empty($view_video['video_url'])) {
                 document.msExitFullscreen();
             }
             fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-            // unlock orientation after exiting fullscreen
-            setTimeout(() => tryUnlockOrientation(), 200);
         }
     });
     
+    // Playback speed
+    if (speedSelect) {
+        speedSelect.addEventListener('change', (e) => {
+            const rate = parseFloat(e.target.value || '1');
+            video.playbackRate = Number.isFinite(rate) ? rate : 1;
+        });
+    }
+
+    // VLC-like keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+
+        if (e.code === 'Space') {
+            e.preventDefault();
+            video.paused ? video.play() : video.pause();
+        } else if (e.key.toLowerCase() === 'f') {
+            e.preventDefault();
+            fullscreenBtn?.click();
+        } else if (e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            rotateBtn?.click();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            video.currentTime = Math.max(0, video.currentTime - 10);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            video.volume = Math.min(1, +(video.volume + 0.05).toFixed(2));
+            volumeSlider.value = video.volume;
+            video.muted = video.volume === 0;
+            updateMuteIcon();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            video.volume = Math.max(0, +(video.volume - 0.05).toFixed(2));
+            volumeSlider.value = video.volume;
+            video.muted = video.volume === 0;
+            updateMuteIcon();
+        }
+    });
+
+    updateMuteIcon();
+
     // Video events
     video.addEventListener('loadedmetadata', () => {
         durationEl.textContent = formatTime(video.duration);

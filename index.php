@@ -274,6 +274,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
             }
         }
     </style>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#667eea">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg nav-custom fixed-top">
@@ -420,5 +422,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{})); }</script>
 </body>
 </html>

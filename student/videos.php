@@ -13,8 +13,83 @@ $current_user = $auth->getCurrentUser();
 // Check subscription access
 requireSubscription();
 
-// Get videos list
-$videos = $db->fetchAll("SELECT r.*, c.title as course_title FROM resources r JOIN courses c ON r.course_id = c.id JOIN enrollments e ON c.id = e.course_id WHERE e.student_id = ? AND r.resource_type = 'video' AND r.is_active = 1 AND e.is_active = 1 ORDER BY r.created_at DESC", [$current_user['id']]);
+// Pagination and filtering
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$per_page = 9;
+$offset = ($page - 1) * $per_page;
+
+$course_filter = isset($_GET['course']) ? (int)$_GET['course'] : 0;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+$where_conditions = [
+    "e.student_id = ?",
+    "r.resource_type = 'video'",
+    "r.is_active = 1",
+    "e.is_active = 1"
+];
+$params = [$current_user['id']];
+
+if ($course_filter > 0) {
+    $where_conditions[] = "r.course_id = ?";
+    $params[] = $course_filter;
+}
+
+if ($search !== '') {
+    $where_conditions[] = "(r.title LIKE ? OR r.description LIKE ? OR c.title LIKE ?)";
+    $search_param = "%{$search}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+}
+
+$where_clause = implode(' AND ', $where_conditions);
+
+$total_count = (int)$db->fetch(
+    "SELECT COUNT(*) AS count
+     FROM resources r
+     JOIN courses c ON r.course_id = c.id
+     JOIN enrollments e ON c.id = e.course_id
+     WHERE {$where_clause}",
+    $params
+)['count'];
+
+$total_pages = max(1, (int)ceil($total_count / $per_page));
+if ($page > $total_pages) {
+    $page = $total_pages;
+    $offset = ($page - 1) * $per_page;
+}
+
+$videos = $db->fetchAll(
+    "SELECT r.*, c.title AS course_title
+     FROM resources r
+     JOIN courses c ON r.course_id = c.id
+     JOIN enrollments e ON c.id = e.course_id
+     WHERE {$where_clause}
+     ORDER BY r.created_at DESC
+     LIMIT {$per_page} OFFSET {$offset}",
+    $params
+);
+
+$enrolled_courses = $db->fetchAll(
+    "SELECT DISTINCT c.id, c.title
+     FROM courses c
+     JOIN enrollments e ON c.id = e.course_id
+     WHERE e.student_id = ? AND e.is_active = 1
+     ORDER BY c.title",
+    [$current_user['id']]
+);
+
+function videosUrl(array $changes = []) {
+    $params = $_GET;
+    foreach ($changes as $k => $v) {
+        if ($v === null || $v === '') {
+            unset($params[$k]);
+        } else {
+            $params[$k] = $v;
+        }
+    }
+    return 'videos.php' . (!empty($params) ? ('?' . http_build_query($params)) : '');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,7 +110,7 @@ $videos = $db->fetchAll("SELECT r.*, c.title as course_title FROM resources r JO
         .user-avatar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .top-nav h1 i { color: #667eea; }
         .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
-        
+
         .video-card {
             border: none;
             border-radius: 15px;
@@ -67,6 +142,8 @@ $videos = $db->fetchAll("SELECT r.*, c.title as course_title FROM resources r JO
             <div class="nav-item"><a href="courses.php" class="nav-link"><i class="fas fa-book"></i><span>My Courses</span></a></div>
             <div class="nav-item"><a href="resources.php" class="nav-link"><i class="fas fa-file-alt"></i><span>Resources</span></a></div>
             <div class="nav-item"><a href="videos.php" class="nav-link active"><i class="fas fa-video"></i><span>Videos</span></a></div>
+            <div class="nav-item"><a href="music.php" class="nav-link"><i class="fas fa-music"></i><span>Music</span></a></div>
+            <div class="nav-item"><a href="timetable.php" class="nav-link"><i class="fas fa-table"></i><span>Timetable</span></a></div>
             <div class="nav-item"><a href="sessions.php" class="nav-link"><i class="fas fa-calendar-alt"></i><span>Sessions</span></a></div>
             <div class="nav-item"><a href="calendar.php" class="nav-link"><i class="fas fa-calendar"></i><span>Calendar</span></a></div>
             <div class="nav-item"><a href="grades.php" class="nav-link"><i class="fas fa-chart-line"></i><span>Grades</span></a></div>
@@ -86,29 +163,69 @@ $videos = $db->fetchAll("SELECT r.*, c.title as course_title FROM resources r JO
         </div>
 
         <div class="card">
-            <div class="card-header"><h5 class="mb-0"><i class="fas fa-video me-2"></i>Available Videos</h5></div>
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <h5 class="mb-0"><i class="fas fa-video me-2"></i>Available Videos</h5>
+                    <form method="GET" class="d-flex gap-2 flex-wrap">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search videos..." value="<?php echo htmlspecialchars($search); ?>" style="max-width: 220px;">
+                        <select name="course" class="form-select form-select-sm" style="max-width: 220px;">
+                            <option value="0">All Courses</option>
+                            <?php foreach ($enrolled_courses as $course): ?>
+                                <option value="<?php echo $course['id']; ?>" <?php echo $course_filter === (int)$course['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($course['title']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i></button>
+                        <?php if ($search !== '' || $course_filter > 0): ?>
+                            <a href="videos.php" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a>
+                        <?php endif; ?>
+                    </form>
+                </div>
+            </div>
             <div class="card-body">
                 <?php if (empty($videos)): ?>
-                <p class="text-muted text-center py-4">No videos available.</p>
+                    <p class="text-muted text-center py-4 mb-0">No videos found for the selected filters.</p>
                 <?php else: ?>
-                <div class="row g-4">
-                    <?php foreach ($videos as $v): ?>
-                    <div class="col-md-6 col-lg-4">
-                        <a href="watch_video.php?id=<?php echo $v['id']; ?>" class="text-decoration-none">
-                            <div class="video-card card h-100">
-                                <div class="video-thumbnail">
-                                    <i class="fas fa-play-circle"></i>
+                    <div class="row g-4">
+                        <?php foreach ($videos as $v): ?>
+                        <div class="col-md-6 col-lg-4">
+                            <a href="watch_video.php?id=<?php echo $v['id']; ?>" class="text-decoration-none">
+                                <div class="video-card card h-100">
+                                    <div class="video-thumbnail">
+                                        <i class="fas fa-play-circle"></i>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="mb-1 text-dark"><?php echo htmlspecialchars($v['title']); ?></h6>
+                                        <small class="text-muted"><?php echo htmlspecialchars($v['course_title']); ?> • <?php echo number_format((int)($v['views_count'] ?? 0)); ?> views</small>
+                                        <br><small class="text-muted"><?php echo date('M j, Y', strtotime($v['created_at'])); ?></small>
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    <h6 class="mb-1 text-dark"><?php echo htmlspecialchars($v['title']); ?></h6>
-                                    <small class="text-muted"><?php echo htmlspecialchars($v['course_title']); ?> • <?php echo number_format((int)($v['views_count'] ?? 0)); ?> views</small>
-                                    <br><small class="text-muted"><?php echo date('M j, Y', strtotime($v['created_at'])); ?></small>
-                                </div>
-                            </div>
-                        </a>
+                            </a>
+                        </div>
+                        <?php endforeach; ?>
                     </div>
-                    <?php endforeach; ?>
-                </div>
+
+                    <?php if ($total_pages > 1): ?>
+                    <nav aria-label="Video pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="<?php echo htmlspecialchars(videosUrl(['page' => $page - 1])); ?>">Previous</a>
+                            </li>
+
+                            <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                                <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
+                                    <a class="page-link" href="<?php echo htmlspecialchars(videosUrl(['page' => $i])); ?>"><?php echo $i; ?></a>
+                                </li>
+                            <?php endfor; ?>
+
+                            <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="<?php echo htmlspecialchars(videosUrl(['page' => $page + 1])); ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <p class="text-center text-muted mt-2 mb-0">Showing <?php echo $offset + 1; ?>-<?php echo min($offset + $per_page, $total_count); ?> of <?php echo $total_count; ?> videos</p>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

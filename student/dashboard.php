@@ -54,6 +54,8 @@ $recent_resources = $db->fetchAll("SELECT r.*, c.title as course_title FROM reso
             <div class="nav-item"><a href="courses.php" class="nav-link"><i class="fas fa-book"></i><span>My Courses</span></a></div>
             <div class="nav-item"><a href="resources.php" class="nav-link"><i class="fas fa-file-alt"></i><span>Resources</span></a></div>
             <div class="nav-item"><a href="videos.php" class="nav-link"><i class="fas fa-video"></i><span>Videos</span></a></div>
+            <div class="nav-item"><a href="music.php" class="nav-link"><i class="fas fa-music"></i><span>Music</span></a></div>
+            <div class="nav-item"><a href="timetable.php" class="nav-link"><i class="fas fa-table"></i><span>Timetable</span></a></div>
             <div class="nav-item"><a href="sessions.php" class="nav-link"><i class="fas fa-calendar-alt"></i><span>Sessions</span></a></div>
             <div class="nav-item"><a href="calendar.php" class="nav-link"><i class="fas fa-calendar"></i><span>Calendar</span></a></div>
             <div class="nav-item"><a href="grades.php" class="nav-link"><i class="fas fa-chart-line"></i><span>Grades</span></a></div>
@@ -72,7 +74,28 @@ $recent_resources = $db->fetchAll("SELECT r.*, c.title as course_title FROM reso
             </div>
         </div>
 
-        <?php if (!$has_subscription): ?>
+        
+        <?php if (!empty($new_videos)): ?>
+        <div class="modal fade" id="newVideoModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title"><i class="fas fa-bell text-primary me-2"></i>New Videos Available</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                <ul class="list-group">
+                  <?php foreach($new_videos as $nv): ?>
+                  <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div><strong><?php echo htmlspecialchars($nv['title']); ?></strong><br><small class="text-muted"><?php echo htmlspecialchars($nv['course_title']); ?></small></div>
+                    <a href="watch_video.php?id=<?php echo (int)$nv['id']; ?>" class="btn btn-sm btn-outline-primary">Watch</a>
+                  </li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
+
+<?php if (!$has_subscription): ?>
         <div class="alert alert-warning alert-dismissible fade show">
             <i class="fas fa-exclamation-triangle me-2"></i>
             <strong>No Active Subscription:</strong> You need an active subscription to access courses, resources, and videos. 
@@ -144,5 +167,27 @@ $recent_resources = $db->fetchAll("SELECT r.*, c.title as course_title FROM reso
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../admin/assets/js/admin-script.js"></script>
+<script>
+(function(){
+  const modalEl=document.getElementById("newVideoModal");
+  if(modalEl){
+    const key="studysmart_last_video_popup";
+    const last=localStorage.getItem(key);
+    const today=new Date().toDateString();
+    if(last!==today){
+      const m=new bootstrap.Modal(modalEl); m.show();
+      localStorage.setItem(key,today);
+    }
+    if("Notification" in window){
+      Notification.requestPermission().then((perm)=>{
+        if(perm==="granted"){
+          const first=modalEl.querySelector(".list-group-item strong");
+          if(first) new Notification("StudySmart: New video uploaded",{body:first.textContent});
+        }
+      }).catch(()=>{});
+    }
+  }
+})();
+</script>
 </body>
 </html>
