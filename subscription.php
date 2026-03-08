@@ -10,6 +10,12 @@ define('LENCO_SECRET_KEY', '01196d7abf5ae617b9f9dbd187198f6fa1b95485e8229a396c82
 define('LENCO_PUBLIC_KEY', 'pub-0244f2fd9ff633776ae46a5a34853cad92aec60232743a05');
 define('LENCO_BASE_URL', 'https://api.lenco.co/access/v2');
 define('REVENUE_PRODUCT_KEY', 'study_smart');
+define('PLATFORM_FEE_PERCENT', 0.02);   // Your gain: fixed 2%
+define('LENCO_FEE_PERCENT', 0.015);      // Lenco variable fee estimate
+define('LENCO_FEE_FIXED', 0.75);         // Lenco fixed fee estimate (K)
+define('WITHDRAW_LNCO_FEE_PERCENT', 0.015);
+define('WITHDRAW_LNCO_FEE_FIXED', 1.00);
+define('MIN_FEE', 0.30);
 
 // Basic sanitization helper
 function ss_sanitize($value): string {
@@ -17,6 +23,23 @@ function ss_sanitize($value): string {
 }
 
 // This project uses the Database class from config/database.php; avoid direct PDO extraction.
+
+
+function ss_calc_platform_fee(float $amount): float {
+    return round(max(MIN_FEE, $amount * PLATFORM_FEE_PERCENT), 2);
+}
+
+function ss_calc_lenco_fee(float $amount): float {
+    return round(max(MIN_FEE, ($amount * LENCO_FEE_PERCENT) + LENCO_FEE_FIXED), 2);
+}
+
+function ss_calc_txn_fee(float $amount): float {
+    return round(ss_calc_platform_fee($amount) + ss_calc_lenco_fee($amount), 2);
+}
+
+function ss_calc_withdraw_lenco_fee(float $amount): float {
+    return round(max(MIN_FEE, ($amount * WITHDRAW_LNCO_FEE_PERCENT) + WITHDRAW_LNCO_FEE_FIXED), 2);
+}
 
 // Ensure revenue & payment tracking tables exist (so withdrawals can be isolated to Study Smart only)
 function ss_ensure_tables($db): void {
@@ -34,6 +57,28 @@ function ss_ensure_tables($db): void {
             processed TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+
+    // Backfill/add fee columns for fee-aware settlement (safe on existing installs)
+    try { $db->execute("ALTER TABLE study_smart_payments ADD COLUMN base_amount DECIMAL(12,2) NULL AFTER amount"); } catch (Throwable $e) {}
+    try { $db->execute("ALTER TABLE study_smart_payments ADD COLUMN transaction_fee DECIMAL(12,2) NULL AFTER base_amount"); } catch (Throwable $e) {}
+    try { $db->execute("ALTER TABLE study_smart_payments ADD COLUMN owner_amount DECIMAL(12,2) NULL AFTER transaction_fee"); } catch (Throwable $e) {}
+
+    // Admin withdrawals (owner funds only)
+    $db->execute("
+        CREATE TABLE IF NOT EXISTS admin_withdrawals (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            admin_user_id INT NOT NULL,
+            amount_requested DECIMAL(12,2) NOT NULL,
+            withdrawal_fee DECIMAL(12,2) NOT NULL,
+            platform_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
+            net_payout DECIMAL(12,2) NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'pending',
+            reference VARCHAR(100) NULL UNIQUE,
+            note VARCHAR(255) NULL,
+            created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
@@ -139,7 +184,8 @@ if (isset($_GET['verify_reference'])) {
                 // Mark processed & status
                 $db->execute("UPDATE study_smart_payments SET status='successful', processed=1 WHERE reference = ?", [$reference]);
 // Log Study Smart revenue (separate ledger for withdrawals)
-                $db->execute("INSERT IGNORE INTO revenue_ledger (product_key, amount, reference, payer_user_id, status, created_at) VALUES (?, ?, ?, ?, 'successful', NOW())", [REVENUE_PRODUCT_KEY, $amount, $reference, $current_user['id']]);
+                $ownerAmount = isset($payRow['owner_amount']) ? (float)$payRow['owner_amount'] : (float)$payRow['amount'];
+                $db->execute("INSERT IGNORE INTO revenue_ledger (product_key, user_id, amount, reference, status, created_at) VALUES (?, ?, ?, ?, 'successful', NOW())", [REVENUE_PRODUCT_KEY, (int)$payRow['user_id'], $ownerAmount, $reference]);
 echo json_encode(['success' => true, 'message' => 'Payment verified and subscription activated']);
                 exit;
             }
@@ -183,9 +229,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['init_mobile_money']))
     }
 
     $plan = $plansIndex[$subscription_plan_id];
-    $amount = (float)$plan['price'];
+    $base_amount = (float)$plan['price'];
+    $platform_fee = ss_calc_platform_fee($base_amount);
+    $lenco_fee = ss_calc_lenco_fee($base_amount);
+    $transaction_fee = round($platform_fee + $lenco_fee, 2);
+    $owner_amount = $base_amount;
+    $amount = round($base_amount + $transaction_fee, 2);
 
-    if ($amount <= 0) {
+    if ($base_amount <= 0) {
         echo json_encode(['success' => false, 'message' => 'Invalid amount']);
         exit;
     }
@@ -199,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['init_mobile_money']))
         $reference = 'SS_' . (int)$current_user['id'] . '_' . time();
 
         // Save pending payment with subscription metadata
-        $db->execute("INSERT INTO study_smart_payments (user_id, subscription_plan_id, course_id, promo_code, amount, reference, status, processed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, NOW(), NOW())", [$current_user['id'], $subscription_plan_id, $course_id, $promo_code, $amount, $reference]);
+        $db->execute("INSERT INTO study_smart_payments (user_id, subscription_plan_id, course_id, promo_code, amount, base_amount, transaction_fee, owner_amount, platform_fee, lenco_fee, reference, status, processed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NOW(), NOW())", [$current_user['id'], $subscription_plan_id, $course_id, $promo_code, $amount, $base_amount, $transaction_fee, $owner_amount, $platform_fee, $lenco_fee, $reference]);
 $payment_data = [
             'amount' => $amount,
             'reference' => $reference,
@@ -231,7 +282,12 @@ $payment_data = [
                 'success' => true,
                 'reference' => $result['data']['reference'],
                 'status' => $result['data']['status'] ?? 'pending',
-                'message' => 'Payment initiated. Check your phone to authorize.'
+                'message' => 'Payment initiated. Check your phone to authorize.',
+                'base_amount' => $base_amount,
+                'platform_fee' => $platform_fee,
+                'lenco_fee' => $lenco_fee,
+                'transaction_fee' => $transaction_fee,
+                'total_amount' => $amount
             ]);
             exit;
         }
@@ -510,6 +566,11 @@ if (isset($_GET['success'])) {
                                 <div class="alert alert-info py-2 px-3 mb-2">
                                     <small>
                                         <strong>Price:</strong> K<?php echo number_format($plan['price'], 2); ?><br>
+                                        <?php $est_platform = ss_calc_platform_fee((float)$plan['price']); $est_lenco = ss_calc_lenco_fee((float)$plan['price']); $est_fee = $est_platform + $est_lenco; ?>
+                                        <strong>Your Platform Fee (2%):</strong> K<?php echo number_format($est_platform, 2); ?><br>
+                                        <strong>Lenco Fee:</strong> K<?php echo number_format($est_lenco, 2); ?><br>
+                                        <strong>Total Transaction Fees:</strong> K<?php echo number_format($est_fee, 2); ?><br>
+                                        <strong>Total Charge:</strong> K<?php echo number_format(((float)$plan['price'] + $est_fee), 2); ?><br>
                                         <strong>Duration:</strong> <?php echo $plan['period_days']; ?> days
                                     </small>
                                 </div>

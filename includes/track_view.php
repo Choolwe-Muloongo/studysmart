@@ -24,14 +24,16 @@ if (!$input || empty($input['id']) || empty($input['type'])) {
 $resource_id = (int)$input['id'];
 $type = $input['type'];
 
-// Only support video for now
-if ($type !== 'video') {
+$allowed_types = ['video', 'document'];
+if (!in_array($type, $allowed_types, true)) {
     echo json_encode(['success' => false, 'message' => 'Unsupported type']);
     exit;
 }
 
+$type_condition = $type === 'video' ? "r.resource_type = 'video'" : "r.resource_type != 'video'";
+
 // Verify resource exists and user has access
-$resource = $db->fetch("SELECT r.*, c.lecturer_id FROM resources r JOIN courses c ON r.course_id = c.id JOIN enrollments e ON c.id = e.course_id WHERE r.id = ? AND r.resource_type = 'video' AND r.is_active = 1 AND e.student_id = ? AND e.is_active = 1", [$resource_id, $current_user['id']]);
+$resource = $db->fetch("SELECT r.*, c.lecturer_id FROM resources r JOIN courses c ON r.course_id = c.id JOIN enrollments e ON c.id = e.course_id WHERE r.id = ? AND {$type_condition} AND r.is_active = 1 AND e.student_id = ? AND e.is_active = 1", [$resource_id, $current_user['id']]);
 if (!$resource) {
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'Resource not found or access denied']);
