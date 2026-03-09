@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'classes/Subscription.php';
+require_once 'includes/brand_logo.php';
 
 $db = new Database();
 $subscription = new Subscription();
@@ -35,6 +36,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/brand-logo.css">
     <style>
         * {
             margin: 0;
@@ -280,7 +282,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
 <body>
     <nav class="navbar navbar-expand-lg nav-custom fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-graduation-cap me-2"></i>StudySmart</a>
+            <?php render_brand_logo(['href' => "index.php", 'class' => "navbar-brand", 'size' => "md", 'logo_path' => "WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -403,7 +405,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
-                    <h5 class="mb-3"><i class="fas fa-graduation-cap me-2"></i>StudySmart</h5>
+                    <?php render_brand_logo(['href' => "index.php", 'class' => "mb-3 text-white", 'size' => "sm", 'logo_path' => "WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
                     <p>Your trusted online learning platform for quality education.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
