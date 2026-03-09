@@ -98,8 +98,11 @@ $mime_type = $mime_types[$file_ext] ?? mime_content_type($file_path) ?? 'applica
 header('Content-Type: ' . $mime_type);
 header('Content-Length: ' . $file_size);
 header('X-Content-Type-Options: nosniff');
-header('Cache-Control: public, max-age=3600');
-header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($file_path)) . ' GMT');
+header('ETag: "' . md5($file_path . '|' . $file_size . '|' . filemtime($file_path)) . '"');
+header('X-Offline-Eligible: 1');
+header('Cache-Control: private, max-age=0, must-revalidate');
+header('Expires: ' . gmdate('D, d M Y H:i:s', time() - 3600) . ' GMT');
 
 header('Content-Disposition: inline; filename="' . $file_name . '"');
 
