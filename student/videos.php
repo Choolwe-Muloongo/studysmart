@@ -13,6 +13,26 @@ $current_user = $auth->getCurrentUser();
 // Check subscription access
 requireSubscription();
 
+// Optional in-page video view
+$view_video = null;
+if (isset($_GET['watch'])) {
+    $watch_id = (int)$_GET['watch'];
+    if ($watch_id > 0) {
+        $view_video = $db->fetch(
+            "SELECT r.*, c.title AS course_title
+             FROM resources r
+             JOIN courses c ON r.course_id = c.id
+             JOIN enrollments e ON c.id = e.course_id
+             WHERE r.id = ?
+               AND e.student_id = ?
+               AND r.resource_type = 'video'
+               AND r.is_active = 1
+               AND e.is_active = 1",
+            [$watch_id, $current_user['id']]
+        );
+    }
+}
+
 // Pagination and filtering
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $per_page = 9;
@@ -162,6 +182,17 @@ function videosUrl(array $changes = []) {
             </div>
         </div>
 
+        <?php if ($view_video): ?>
+            <?php require_once '../includes/custom_video_player.php'; ?>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <a href="<?php echo htmlspecialchars(videosUrl(['watch' => null])); ?>" class="btn btn-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Video List
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -178,7 +209,7 @@ function videosUrl(array $changes = []) {
                         </select>
                         <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i></button>
                         <?php if ($search !== '' || $course_filter > 0): ?>
-                            <a href="videos.php" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a>
+                            <a href="<?php echo htmlspecialchars(videosUrl(['search' => null, 'course' => null, 'page' => null])); ?>" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a>
                         <?php endif; ?>
                     </form>
                 </div>
@@ -190,7 +221,7 @@ function videosUrl(array $changes = []) {
                     <div class="row g-4">
                         <?php foreach ($videos as $v): ?>
                         <div class="col-md-6 col-lg-4">
-                            <a href="watch_video.php?id=<?php echo $v['id']; ?>" class="text-decoration-none">
+                            <a href="<?php echo htmlspecialchars(videosUrl(['watch' => $v['id'], 'page' => null])); ?>" class="text-decoration-none">
                                 <div class="video-card card h-100">
                                     <div class="video-thumbnail">
                                         <i class="fas fa-play-circle"></i>
