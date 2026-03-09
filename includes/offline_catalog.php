@@ -39,11 +39,11 @@ function offlineOnlineUrl(int $resourceId, string $resourceType): string {
     return "resources.php?view={$resourceId}";
 }
 
-function offlineUpsertDownload(Database $db, int $userId, array $resource, string $resourceType): void {
+function offlineUpsertDownload(Database $db, int $userId, array $resource, string $resourceType, ?string $status = null): void {
     $resourceId = (int)$resource['id'];
     $cacheKey = offlineCacheKey($resourceId, $resourceType);
     $requiresNetwork = (!empty($resource['external_url']) && empty($resource['file_path'])) ? 1 : 0;
-    $status = $requiresNetwork ? 'online_only' : 'downloaded';
+    $status = $status ?? ($requiresNetwork ? 'online_only' : 'downloaded');
 
     $db->execute(
         "INSERT INTO student_offline_catalog
@@ -70,6 +70,16 @@ function offlineUpsertDownload(Database $db, int $userId, array $resource, strin
             $status,
             $requiresNetwork
         ]
+    );
+}
+
+function offlineSetStatus(Database $db, int $userId, int $resourceId, string $resourceType, string $status): void {
+    $downloadedAt = $status === 'downloaded' ? 'NOW()' : 'NULL';
+    $db->execute(
+        "UPDATE student_offline_catalog
+         SET status = ?, downloaded_at = {$downloadedAt}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ? AND resource_id = ? AND resource_type = ?",
+        [$status, $userId, $resourceId, $resourceType]
     );
 }
 

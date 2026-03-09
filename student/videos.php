@@ -24,10 +24,25 @@ function videosUrl(array $changes = []): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['offline_action'], $_POST['resource_id'])) {
     $rid = (int)$_POST['resource_id'];
     $resource = $db->fetch("SELECT id,title,course_id,file_size,file_path,external_url FROM resources r JOIN courses c ON r.course_id=c.id JOIN enrollments e ON c.id=e.course_id WHERE r.id=? AND e.student_id=? AND e.is_active=1 AND r.is_active=1 AND r.resource_type='video'", [$rid, $current_user['id']]);
+    $action = (string)$_POST['offline_action'];
     if ($resource) {
-        if ($_POST['offline_action'] === 'download') offlineUpsertDownload($db, (int)$current_user['id'], $resource, 'video');
-        if ($_POST['offline_action'] === 'remove') offlineRemoveDownload($db, (int)$current_user['id'], $rid, 'video');
+        if ($action === 'download') offlineUpsertDownload($db, (int)$current_user['id'], $resource, 'video');
+        if ($action === 'remove') offlineRemoveDownload($db, (int)$current_user['id'], $rid, 'video');
+        if ($action === 'prepare_download') offlineUpsertDownload($db, (int)$current_user['id'], $resource, 'video', 'pending');
+        if ($action === 'mark_downloaded') offlineSetStatus($db, (int)$current_user['id'], $rid, 'video', 'downloaded');
+        if ($action === 'mark_failed') offlineSetStatus($db, (int)$current_user['id'], $rid, 'video', 'failed');
     }
+
+    if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
+        header('Content-Type: application/json');
+        if (!$resource) {
+            echo json_encode(['success' => false, 'error' => 'Video not found']);
+            exit;
+        }
+        echo json_encode(['success' => true, 'status' => $action, 'stream_url' => '../includes/video_stream.php?id=' . $rid]);
+        exit;
+    }
+
     header('Location: ' . videosUrl(['watch' => null]));
     exit;
 }
@@ -156,6 +171,74 @@ $offline = offlineStatusMap($db, (int)$current_user['id'], array_map(fn($v)=>(in
         </div>
     </div>
 
+    <script>
+    (() => {
+        async function postOfflineAction(formData) {
+            const response = await fetch('videos.php', { method: 'POST', body: formData });
+            return response.json();
+        }
+
+        async function saveViaWorker(url) {
+            const registration = await navigator.serviceWorker?.ready;
+            const worker = registration?.active;
+            if (!worker) throw new Error('No active service worker');
+
+            const channel = new MessageChannel();
+            const done = new Promise((resolve, reject) => {
+                channel.port1.onmessage = (event) => {
+                    if (event.data?.ok) resolve();
+                    else reject(new Error(event.data?.error || 'Offline save failed'));
+                };
+            });
+
+            worker.postMessage({ type: 'OFFLINE_MEDIA_SAVE', url }, [channel.port2]);
+            await done;
+        }
+
+        document.addEventListener('submit', async (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            const actionField = form.querySelector('input[name="offline_action"]');
+            const resourceField = form.querySelector('input[name="resource_id"]');
+            const triggerBtn = form.querySelector('button[data-offline-download="1"]');
+            if (!actionField || !resourceField || !triggerBtn || actionField.value !== 'download') return;
+
+            event.preventDefault();
+            triggerBtn.disabled = true;
+
+            const prepareData = new FormData();
+            prepareData.append('ajax', '1');
+            prepareData.append('offline_action', 'prepare_download');
+            prepareData.append('resource_id', resourceField.value);
+
+            try {
+                const prep = await postOfflineAction(prepareData);
+                if (!prep?.success || !prep.stream_url) throw new Error(prep?.error || 'Failed to prepare offline save');
+
+                await saveViaWorker(prep.stream_url);
+
+                const successData = new FormData();
+                successData.append('ajax', '1');
+                successData.append('offline_action', 'mark_downloaded');
+                successData.append('resource_id', resourceField.value);
+                await postOfflineAction(successData);
+                window.location.reload();
+            } catch (error) {
+                const failData = new FormData();
+                failData.append('ajax', '1');
+                failData.append('offline_action', 'mark_failed');
+                failData.append('resource_id', resourceField.value);
+                await postOfflineAction(failData);
+                triggerBtn.disabled = false;
+                triggerBtn.classList.remove('btn-outline-success');
+                triggerBtn.classList.add('btn-outline-warning');
+                triggerBtn.innerHTML = 'Retry offline save';
+                actionField.value = 'download';
+                triggerBtn.dataset.offlineDownload = '1';
+            }
+        });
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../admin/assets/js/admin-script.js"></script>
     <script src="assets/js/global-music-player.js"></script>
