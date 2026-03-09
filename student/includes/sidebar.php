@@ -38,6 +38,13 @@
         </div>
         
         <div class="nav-item">
+            <a href="download.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'download.php' ? 'active' : ''; ?>">
+                <i class="fas fa-download"></i>
+                <span>Downloads</span>
+            </a>
+        </div>
+        
+        <div class="nav-item">
             <a href="sessions.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'sessions.php' ? 'active' : ''; ?>">
                 <i class="fas fa-calendar-alt"></i>
                 <span>Sessions</span>

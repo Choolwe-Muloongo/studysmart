@@ -165,3 +165,25 @@ CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_user_sessions_token ON user_sessions(session_token);
 CREATE INDEX idx_resource_access_resource ON resource_access(resource_id);
 CREATE INDEX idx_resource_access_student ON resource_access(student_id); 
+-- Offline catalog metadata for student downloads
+CREATE TABLE student_offline_catalog (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    resource_id INT NOT NULL,
+    resource_type ENUM('video','document','music') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    course_id INT,
+    local_key VARCHAR(255),
+    cache_key VARCHAR(255),
+    downloaded_at DATETIME,
+    size_bytes BIGINT DEFAULT 0,
+    status ENUM('downloaded','pending','failed','removed','online_only') NOT NULL DEFAULT 'downloaded',
+    requires_network TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_student_download (user_id, resource_id, resource_type),
+    INDEX idx_student_download_tab (user_id, resource_type, status),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
+);
