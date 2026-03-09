@@ -41,6 +41,11 @@ if (!empty($view_video['video_url'])) {
             <button class="btn btn-light btn-sm" id="ssFitBtn" type="button" onclick="ssToggleFitScreen()">
                 <i class="fas fa-expand me-1"></i>Fit Screen
             </button>
+            <?php if ($source_type === 'stream' && $video_url !== ''): ?>
+            <button class="btn btn-light btn-sm" id="saveVideoOffline" type="button" data-url="<?php echo htmlspecialchars($video_url); ?>">
+                <i class="fas fa-cloud-download-alt me-1"></i>Save Offline
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -169,7 +174,35 @@ if (!empty($view_video['video_url'])) {
 (function () {
     const player = document.getElementById('studySmartPlayer');
     const fitBtn = document.getElementById('ssFitBtn');
+    const saveVideoOfflineBtn = document.getElementById('saveVideoOffline');
     if (!player || !fitBtn) return;
+
+    if (saveVideoOfflineBtn) {
+        saveVideoOfflineBtn.addEventListener('click', async () => {
+            saveVideoOfflineBtn.disabled = true;
+            try {
+                const registration = await navigator.serviceWorker?.ready;
+                const worker = registration?.active;
+                if (!worker) throw new Error('No active service worker');
+
+                const channel = new MessageChannel();
+                const done = new Promise((resolve, reject) => {
+                    channel.port1.onmessage = (event) => {
+                        if (event.data?.ok) resolve();
+                        else reject(new Error(event.data?.error || 'Offline save failed'));
+                    };
+                });
+
+                worker.postMessage({ type: 'OFFLINE_MEDIA_SAVE', url: saveVideoOfflineBtn.dataset.url }, [channel.port2]);
+                await done;
+                saveVideoOfflineBtn.innerHTML = '<i class=\"fas fa-check me-1\"></i>Saved Offline';
+            } catch (error) {
+                console.warn('Video offline save failed', error);
+                saveVideoOfflineBtn.innerHTML = '<i class=\"fas fa-exclamation-triangle me-1\"></i>Retry Offline Save';
+                saveVideoOfflineBtn.disabled = false;
+            }
+        });
+    }
 
     window.ssSetOrientation = function (mode) {
         player.classList.remove('orientation-auto', 'orientation-portrait', 'orientation-landscape');

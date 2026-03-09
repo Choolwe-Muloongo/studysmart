@@ -345,15 +345,32 @@ fetch(docUrl).then(r=>r.text()).then(t=>textContent.textContent=t);
 <?php endif; ?>
 
 const saveDocOfflineBtn = document.getElementById('saveDocOffline');
-if (saveDocOfflineBtn && 'caches' in window) {
+if (saveDocOfflineBtn) {
   saveDocOfflineBtn.addEventListener('click', async () => {
+    const url = saveDocOfflineBtn.dataset.url;
+    saveDocOfflineBtn.disabled = true;
+
     try {
-      const cache = await caches.open('studysmart-offline-media-v1');
-      await cache.add(saveDocOfflineBtn.dataset.url);
+      const registration = await navigator.serviceWorker?.ready;
+      const worker = registration?.active;
+      if (!worker) throw new Error('No active service worker');
+
+      const messageChannel = new MessageChannel();
+      const completed = new Promise((resolve, reject) => {
+        messageChannel.port1.onmessage = (event) => {
+          if (event.data?.ok) resolve();
+          else reject(new Error(event.data?.error || 'Offline save failed'));
+        };
+      });
+
+      worker.postMessage({ type: 'OFFLINE_MEDIA_SAVE', url }, [messageChannel.port2]);
+      await completed;
+
       saveDocOfflineBtn.innerHTML = '<i class="fas fa-check me-2"></i>Saved Offline';
-      saveDocOfflineBtn.disabled = true;
     } catch (e) {
       console.warn('Offline save failed', e);
+      saveDocOfflineBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Retry Offline Save';
+      saveDocOfflineBtn.disabled = false;
     }
   });
 }
