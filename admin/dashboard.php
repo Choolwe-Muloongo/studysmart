@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/brand_logo.php';
 
 // Simple session check
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
@@ -354,12 +355,7 @@ if ($expired_sessions > 0) {
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="dashboard.php" class="sidebar-brand">
-                <div class="logo-container d-flex align-items-center gap-2">
-                    <img src="../WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png" alt="StudySmart Logo" class="logo-image">
-                    <span>StudySmart</span>
-                </div>
-            </a>
+<?php render_brand_logo(['href' => "dashboard.php", 'class' => "sidebar-brand", 'size' => "md", 'logo_path' => "../WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
         </div>
         <div class="sidebar-nav py-3">
             <a href="dashboard.php" class="nav-link active">
