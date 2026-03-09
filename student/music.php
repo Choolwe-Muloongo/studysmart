@@ -73,9 +73,43 @@ function musicUrl(array $changes = []) {
 <div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><h5 class="mb-0"><i class="fas fa-headphones me-2"></i>Audio Resources</h5>
 <form method="GET" class="d-flex gap-2 flex-wrap"><input type="text" name="search" class="form-control form-control-sm" placeholder="Search tracks..." value="<?php echo htmlspecialchars($search); ?>" style="max-width:220px;">
 <select name="course" class="form-select form-select-sm" style="max-width:220px;"><option value="0">All Courses</option><?php foreach($courses as $c): ?><option value="<?php echo $c['id']; ?>" <?php echo $course_filter===(int)$c['id']?'selected':''; ?>><?php echo htmlspecialchars($c['title']); ?></option><?php endforeach; ?></select>
-<button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-search"></i></button><?php if($search!==''||$course_filter>0): ?><a href="music.php" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a><?php endif; ?></form></div></div>
-<div class="card-body"><?php if(empty($tracks)): ?><p class="text-center text-muted py-4">No music/audio resources found.</p><?php else: ?><div class="row g-3"><?php foreach($tracks as $t): ?><div class="col-lg-6"><div class="track-card card"><div class="card-body"><div class="d-flex justify-content-between"><div><h6 class="mb-1"><?php echo htmlspecialchars($t['title']); ?></h6><small class="text-muted"><?php echo htmlspecialchars($t['course_title']); ?> • <?php echo number_format((int)($t['views_count']??0)); ?> listens</small></div><i class="fas fa-music text-primary"></i></div><audio controls class="w-100 mt-2"><source src="../includes/document_stream.php?id=<?php echo (int)$t['id']; ?>"></audio><div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm save-offline" data-url="../includes/document_stream.php?id=<?php echo (int)$t['id']; ?>"><i class="fas fa-cloud-download-alt me-1"></i>Save Offline</button></div></div></div></div><?php endforeach; ?></div>
+<button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-search"></i></button><?php if($search!==''||$course_filter>0): ?><a href="music.php" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i></a><?php endif; ?></form><div class="form-check form-switch ms-auto">
+<input class="form-check-input" type="checkbox" role="switch" id="overlayToggle">
+<label class="form-check-label text-white" for="overlayToggle">Enable mini player overlay outside Music page</label>
+</div></div></div>
+<div class="card-body"><?php if(empty($tracks)): ?><p class="text-center text-muted py-4">No music/audio resources found.</p><?php else: ?><div class="row g-3"><?php foreach($tracks as $t): ?><div class="col-lg-6"><div class="track-card card"><div class="card-body"><div class="d-flex justify-content-between"><div><h6 class="mb-1"><?php echo htmlspecialchars($t['title']); ?></h6><small class="text-muted"><?php echo htmlspecialchars($t['course_title']); ?> • <?php echo number_format((int)($t['views_count']??0)); ?> listens</small></div><i class="fas fa-music text-primary"></i></div><div class="mt-3 d-flex flex-wrap gap-2"><button type="button" class="btn btn-primary btn-sm play-global-track" data-track='<?php echo htmlspecialchars(json_encode(["id"=>(int)$t["id"],"title"=>$t["title"],"url"=>"../includes/document_stream.php?id=".(int)$t["id"],"course_title"=>$t["course_title"]]), ENT_QUOTES, "UTF-8"); ?>'><i class="fas fa-play me-1"></i>Play in global player</button><button type="button" class="btn btn-outline-primary btn-sm save-offline" data-url="../includes/document_stream.php?id=<?php echo (int)$t['id']; ?>"><i class="fas fa-cloud-download-alt me-1"></i>Save Offline</button></div></div></div></div><?php endforeach; ?></div>
 <?php if($total_pages>1): ?><nav class="mt-4"><ul class="pagination justify-content-center"><li class="page-item <?php echo $page<=1?'disabled':''; ?>"><a class="page-link" href="<?php echo htmlspecialchars(musicUrl(['page'=>$page-1])); ?>">Previous</a></li><?php for($i=max(1,$page-2);$i<=min($total_pages,$page+2);$i++): ?><li class="page-item <?php echo $i===$page?'active':''; ?>"><a class="page-link" href="<?php echo htmlspecialchars(musicUrl(['page'=>$i])); ?>"><?php echo $i; ?></a></li><?php endfor; ?><li class="page-item <?php echo $page>=$total_pages?'disabled':''; ?>"><a class="page-link" href="<?php echo htmlspecialchars(musicUrl(['page'=>$page+1])); ?>">Next</a></li></ul></nav><?php endif; ?>
 <?php endif; ?></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script><script src="../admin/assets/js/admin-script.js"></script>
+<script src="assets/js/global-music-player.js"></script>
+<script>
+(function(){
+  const overlayKey = 'studysmart_music_overlay_enabled';
+  const tracks = <?php echo json_encode(array_map(function($t){ return ["id"=>(int)$t["id"],"title"=>$t["title"],"url"=>"../includes/document_stream.php?id=".(int)$t["id"],"course_title"=>$t["course_title"]]; }, $tracks)); ?>;
+  if (window.StudySmartMusicPlayer && tracks.length) {
+    window.StudySmartMusicPlayer.enqueueMany(tracks);
+  }
+  document.querySelectorAll('.play-global-track').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      try {
+        const track = JSON.parse(btn.getAttribute('data-track'));
+        if (window.StudySmartMusicPlayer) {
+          window.StudySmartMusicPlayer.enqueue(track, true);
+        }
+      } catch (_) {}
+    });
+  });
+  const overlayToggle = document.getElementById('overlayToggle');
+  if (overlayToggle) {
+    const enabled = localStorage.getItem(overlayKey);
+    overlayToggle.checked = enabled === null ? true : enabled === '1';
+    overlayToggle.addEventListener('change', () => {
+      localStorage.setItem(overlayKey, overlayToggle.checked ? '1' : '0');
+      if (window.StudySmartMusicPlayer) {
+        window.StudySmartMusicPlayer.setOverlayEnabled(overlayToggle.checked);
+      }
+    });
+  }
+})();
+</script>
 </body></html>
