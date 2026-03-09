@@ -1,3 +1,10 @@
+<!-- Unified Student Sidebar Template -->
+<nav class="sidebar student-sidebar">
+    <div class="sidebar-header">
+        <a href="dashboard.php" class="sidebar-brand">
+            <i class="fas fa-graduation-cap"></i>
+            <span>StudySmart</span>
+        </a>
 <?php
 require_once '../../includes/brand_logo.php';
 ?>
@@ -34,6 +41,13 @@ require_once '../../includes/brand_logo.php';
             <a href="videos.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'videos.php' ? 'active' : ''; ?>">
                 <i class="fas fa-video"></i>
                 <span>Videos</span>
+            </a>
+        </div>
+        
+        <div class="nav-item">
+            <a href="download.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'download.php' ? 'active' : ''; ?>">
+                <i class="fas fa-download"></i>
+                <span>Downloads</span>
             </a>
         </div>
         

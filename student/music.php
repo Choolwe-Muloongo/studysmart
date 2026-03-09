@@ -4,52 +4,20 @@ require_once '../config/database.php';
 require_once '../includes/brand_logo.php';
 require_once '../classes/Auth.php';
 require_once '../includes/subscription_check.php';
-
-$auth = new Auth();
-$auth->requireRole('student');
-$db = new Database();
-$current_user = $auth->getCurrentUser();
-requireSubscription();
-
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$per_page = 8;
-$offset = ($page - 1) * $per_page;
-$course_filter = isset($_GET['course']) ? (int)$_GET['course'] : 0;
-$search = trim($_GET['search'] ?? '');
-
-$where = [
-    "e.student_id = ?",
-    "r.is_active = 1",
-    "e.is_active = 1",
-    "r.resource_type != 'video'",
-    "LOWER(COALESCE(r.file_path,'')) REGEXP '\\.(mp3|wav|ogg|m4a|aac)$'"
-];
-$params = [$current_user['id']];
-
-if ($course_filter > 0) { $where[] = "r.course_id = ?"; $params[] = $course_filter; }
-if ($search !== '') {
-    $where[] = "(r.title LIKE ? OR r.description LIKE ? OR c.title LIKE ?)";
-    $q = "%{$search}%";
-    $params[] = $q; $params[] = $q; $params[] = $q;
-}
-$whereSql = implode(' AND ', $where);
-
-$total_count = (int)$db->fetch("SELECT COUNT(*) AS count FROM resources r JOIN courses c ON r.course_id = c.id JOIN enrollments e ON c.id = e.course_id WHERE {$whereSql}", $params)['count'];
-$total_pages = max(1, (int)ceil($total_count / $per_page));
-if ($page > $total_pages) { $page = $total_pages; $offset = ($page - 1) * $per_page; }
-
-$tracks = $db->fetchAll("SELECT r.*, c.title AS course_title FROM resources r JOIN courses c ON r.course_id = c.id JOIN enrollments e ON c.id = e.course_id WHERE {$whereSql} ORDER BY r.created_at DESC LIMIT {$per_page} OFFSET {$offset}", $params);
-$courses = $db->fetchAll("SELECT DISTINCT c.id, c.title FROM courses c JOIN enrollments e ON c.id = e.course_id WHERE e.student_id = ? AND e.is_active = 1 ORDER BY c.title", [$current_user['id']]);
-
-function musicUrl(array $changes = []) {
-    $params = $_GET;
-    foreach ($changes as $k => $v) {
-        if ($v === null || $v === '') unset($params[$k]);
-        else $params[$k] = $v;
-    }
-    return 'music.php' . (!empty($params) ? ('?' . http_build_query($params)) : '');
-}
+require_once '../includes/offline_catalog.php';
+$auth = new Auth(); $auth->requireRole('student'); $db = new Database(); $current_user = $auth->getCurrentUser(); requireSubscription(); ensureOfflineCatalogTable($db);
+function musicUrl(array $changes=[]): string { $p=$_GET; foreach($changes as $k=>$v){ if($v===null||$v==='') unset($p[$k]); else $p[$k]=$v;} return 'music.php'.(!empty($p)?('?'.http_build_query($p)):''); }
+if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['offline_action'],$_POST['resource_id'])){ $rid=(int)$_POST['resource_id']; $r=$db->fetch("SELECT r.id,r.title,r.course_id,r.file_size,r.file_path,r.external_url FROM resources r JOIN courses c ON r.course_id=c.id JOIN enrollments e ON c.id=e.course_id WHERE r.id=? AND e.student_id=? AND e.is_active=1 AND r.is_active=1",[$rid,$current_user['id']]); if($r){ if($_POST['offline_action']==='download') offlineUpsertDownload($db,(int)$current_user['id'],$r,'music'); if($_POST['offline_action']==='remove') offlineRemoveDownload($db,(int)$current_user['id'],$rid,'music'); } header('Location: '.musicUrl()); exit; }
+$page=max(1,(int)($_GET['page']??1)); $per_page=8; $offset=($page-1)*$per_page; $course_filter=(int)($_GET['course']??0); $search=trim($_GET['search']??'');
+$where=["e.student_id=?","e.is_active=1","r.is_active=1","LOWER(COALESCE(r.file_path,'')) REGEXP '\\.(mp3|wav|ogg|m4a|aac)$'"];$params=[$current_user['id']]; if($course_filter>0){$where[]='r.course_id=?';$params[]=$course_filter;} if($search!==''){ $where[]='(r.title LIKE ? OR r.description LIKE ? OR c.title LIKE ?)'; $q="%{$search}%"; array_push($params,$q,$q,$q);} $w=implode(' AND ',$where);
+$total_count=(int)$db->fetch("SELECT COUNT(*) AS count FROM resources r JOIN courses c ON r.course_id=c.id JOIN enrollments e ON c.id=e.course_id WHERE {$w}",$params)['count']; $total_pages=max(1,(int)ceil($total_count/$per_page));
+$tracks=$db->fetchAll("SELECT r.*,c.title AS course_title FROM resources r JOIN courses c ON r.course_id=c.id JOIN enrollments e ON c.id=e.course_id WHERE {$w} ORDER BY r.created_at DESC LIMIT {$per_page} OFFSET {$offset}",$params); $courses=$db->fetchAll("SELECT DISTINCT c.id,c.title FROM courses c JOIN enrollments e ON c.id=e.course_id WHERE e.student_id=? AND e.is_active=1 ORDER BY c.title",[$current_user['id']]);
+$offline=offlineStatusMap($db,(int)$current_user['id'],array_map(fn($t)=>(int)$t['id'],$tracks),'music');
 ?>
+<!DOCTYPE html><html><head><title>Music</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"><link rel="stylesheet" href="../admin/assets/css/admin-style.css"></head><body>
+<nav class="sidebar" id="sidebar"><div class="sidebar-header"><a href="dashboard.php" class="sidebar-brand"><i class="fas fa-graduation-cap"></i><span>StudySmart</span></a></div><div class="sidebar-nav"><div class="nav-item"><a href="music.php" class="nav-link active"><i class="fas fa-music"></i><span>Music</span></a></div><div class="nav-item"><a href="download.php" class="nav-link"><i class="fas fa-download"></i><span>Downloads</span></a></div></div></nav>
+<div class="main-content"><div class="top-nav"><h1>Music</h1><div class="user-info"><a href="download.php" class="btn btn-sm btn-outline-primary me-2">Downloads</a></div></div>
+<div class="card"><div class="card-header"><form method="GET" class="d-flex gap-2"><input name="search" value="<?php echo htmlspecialchars($search); ?>" class="form-control form-control-sm" placeholder="Search"><select name="course" class="form-select form-select-sm"><option value="0">All Courses</option><?php foreach($courses as $c): ?><option value="<?php echo $c['id']; ?>" <?php echo $course_filter===(int)$c['id']?'selected':''; ?>><?php echo htmlspecialchars($c['title']); ?></option><?php endforeach; ?></select><button class="btn btn-sm btn-primary">Filter</button></form></div><div class="card-body"><div class="row g-3"><?php foreach($tracks as $t): $isDown=(($offline[(int)$t['id']]['status']??'')==='downloaded'); ?><div class="col-lg-6"><div class="card"><div class="card-body"><h6><?php echo htmlspecialchars($t['title']); ?></h6><audio controls class="w-100"><source src="../includes/document_stream.php?id=<?php echo (int)$t['id']; ?>"></audio><form method="POST" class="mt-2 d-inline"><input type="hidden" name="resource_id" value="<?php echo (int)$t['id']; ?>"><input type="hidden" name="offline_action" value="<?php echo $isDown?'remove':'download'; ?>"><button class="btn btn-sm <?php echo $isDown?'btn-outline-danger':'btn-outline-success'; ?>"><?php echo $isDown?'Remove download':'Download for offline'; ?></button></form></div></div></div><?php endforeach; ?></div></div></div></div></body></html>
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Music - StudySmart</title>
