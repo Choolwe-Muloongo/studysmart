@@ -15,11 +15,6 @@ $total_count=(int)$db->fetch("SELECT COUNT(*) AS count FROM resources r JOIN cou
 $resources=$db->fetchAll("SELECT r.*,c.title AS course_title FROM resources r JOIN courses c ON r.course_id=c.id JOIN enrollments e ON c.id=e.course_id WHERE {$w} ORDER BY r.created_at DESC LIMIT {$per_page} OFFSET {$offset}",$params);$courses=$db->fetchAll("SELECT DISTINCT c.id,c.title FROM courses c JOIN enrollments e ON c.id=e.course_id WHERE e.student_id=? AND e.is_active=1 ORDER BY c.title",[$current_user['id']]);
 $offline=offlineStatusMap($db,(int)$current_user['id'],array_map(fn($r)=>(int)$r['id'],$resources),'document');
 ?>
-<!DOCTYPE html><html><head><title>Resources</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"><link rel="stylesheet" href="../admin/assets/css/admin-style.css"></head><body>
-<nav class="sidebar" id="sidebar"><div class="sidebar-header"><a href="dashboard.php" class="sidebar-brand"><i class="fas fa-graduation-cap"></i><span>StudySmart</span></a></div><div class="sidebar-nav"><div class="nav-item"><a href="resources.php" class="nav-link active"><i class="fas fa-file-alt"></i><span>Resources</span></a></div><div class="nav-item"><a href="download.php" class="nav-link"><i class="fas fa-download"></i><span>Downloads</span></a></div></div></nav>
-<div class="main-content"><div class="top-nav"><h1>Resources</h1><div class="user-info"><a href="download.php" class="btn btn-sm btn-outline-primary">Downloads</a></div></div>
-<?php if($view_resource){ require_once '../includes/document_viewer.php'; } ?>
-<div class="card"><div class="card-header"><form method="GET" class="d-flex gap-2"><input name="search" value="<?php echo htmlspecialchars($search); ?>" class="form-control form-control-sm" placeholder="Search"><select name="course" class="form-select form-select-sm"><option value="0">All Courses</option><?php foreach($courses as $c): ?><option value="<?php echo $c['id']; ?>" <?php echo $course_filter===(int)$c['id']?'selected':''; ?>><?php echo htmlspecialchars($c['title']); ?></option><?php endforeach; ?></select><button class="btn btn-sm btn-primary">Filter</button></form></div><div class="card-body"><div class="row g-3"><?php foreach($resources as $r): $isDown=(($offline[(int)$r['id']]['status']??'')==='downloaded'); ?><div class="col-md-6 col-lg-4"><div class="card"><div class="card-body"><h6><?php echo htmlspecialchars($r['title']); ?></h6><small class="text-muted"><?php echo htmlspecialchars($r['course_title']); ?></small><div class="mt-2 d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars(resourcesUrl(['view'=>$r['id']])); ?>">Open</a><form method="POST"><input type="hidden" name="resource_id" value="<?php echo (int)$r['id']; ?>"><input type="hidden" name="offline_action" value="<?php echo $isDown?'remove':'download'; ?>"><button class="btn btn-sm <?php echo $isDown?'btn-outline-danger':'btn-outline-success'; ?>"><?php echo $isDown?'Remove download':'Download for offline'; ?></button></form></div></div></div></div><?php endforeach; ?></div></div></div></div></body></html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +24,7 @@ $offline=offlineStatusMap($db,(int)$current_user['id'],array_map(fn($r)=>(int)$r
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../admin/assets/css/admin-style.css">
+    <link rel="stylesheet" href="assets/css/student-style.css">
     <style>
         .sidebar { background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%); }
         .sidebar-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
@@ -89,22 +84,8 @@ $offline=offlineStatusMap($db,(int)$current_user['id'],array_map(fn($r)=>(int)$r
     </style>
 </head>
 <body>
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header"><?php render_brand_logo(['href' => "dashboard.php", 'class' => "sidebar-brand", 'size' => "md", 'logo_path' => "../WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?></div>
-        <div class="sidebar-nav">
-            <div class="nav-item"><a href="dashboard.php" class="nav-link"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></div>
-            <div class="nav-item"><a href="courses.php" class="nav-link"><i class="fas fa-book"></i><span>My Courses</span></a></div>
-            <div class="nav-item"><a href="resources.php" class="nav-link active"><i class="fas fa-file-alt"></i><span>Resources</span></a></div>
-            <div class="nav-item"><a href="videos.php" class="nav-link"><i class="fas fa-video"></i><span>Videos</span></a></div>
-            <div class="nav-item"><a href="music.php" class="nav-link"><i class="fas fa-music"></i><span>Music</span></a></div>
-            <div class="nav-item"><a href="timetable.php" class="nav-link"><i class="fas fa-table"></i><span>Timetable</span></a></div>
-            <div class="nav-item"><a href="sessions.php" class="nav-link"><i class="fas fa-calendar-alt"></i><span>Sessions</span></a></div>
-            <div class="nav-item"><a href="calendar.php" class="nav-link"><i class="fas fa-calendar"></i><span>Calendar</span></a></div>
-            <div class="nav-item"><a href="grades.php" class="nav-link"><i class="fas fa-chart-line"></i><span>Grades</span></a></div>
-        </div>
-    </nav>
+    <?php include 'includes/sidebar.php'; ?>
 
-    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
 
     <div class="main-content">
         <div class="top-nav">
