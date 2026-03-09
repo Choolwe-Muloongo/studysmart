@@ -20,13 +20,20 @@ function ensureOfflineCatalogTable(Database $db): void {
         KEY idx_user_type_status (user_id, resource_type, status),
         KEY idx_course_id (course_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // One-time migration: normalize legacy relative cache keys to canonical absolute paths.
+    $db->execute(
+        "UPDATE student_offline_catalog
+         SET cache_key = CONCAT('/', SUBSTRING(cache_key, 4))
+         WHERE cache_key LIKE '../includes/%'"
+    );
 }
 
 function offlineCacheKey(int $resourceId, string $resourceType): string {
     if ($resourceType === 'video') {
-        return "../includes/video_stream.php?id={$resourceId}";
+        return "/includes/video_stream.php?id={$resourceId}";
     }
-    return "../includes/document_stream.php?id={$resourceId}";
+    return "/includes/document_stream.php?id={$resourceId}";
 }
 
 function offlineOnlineUrl(int $resourceId, string $resourceType): string {
@@ -39,11 +46,11 @@ function offlineOnlineUrl(int $resourceId, string $resourceType): string {
     return "resources.php?view={$resourceId}";
 }
 
-function offlineUpsertDownload(Database $db, int $userId, array $resource, string $resourceType): void {
+function offlineUpsertDownload(Database $db, int $userId, array $resource, string $resourceType, ?string $status = null): void {
     $resourceId = (int)$resource['id'];
     $cacheKey = offlineCacheKey($resourceId, $resourceType);
     $requiresNetwork = (!empty($resource['external_url']) && empty($resource['file_path'])) ? 1 : 0;
-    $status = $requiresNetwork ? 'online_only' : 'downloaded';
+    $status = $status ?? ($requiresNetwork ? 'online_only' : 'downloaded');
 
     $db->execute(
         "INSERT INTO student_offline_catalog
@@ -70,6 +77,16 @@ function offlineUpsertDownload(Database $db, int $userId, array $resource, strin
             $status,
             $requiresNetwork
         ]
+    );
+}
+
+function offlineSetStatus(Database $db, int $userId, int $resourceId, string $resourceType, string $status): void {
+    $downloadedAt = $status === 'downloaded' ? 'NOW()' : 'NULL';
+    $db->execute(
+        "UPDATE student_offline_catalog
+         SET status = ?, downloaded_at = {$downloadedAt}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ? AND resource_id = ? AND resource_type = ?",
+        [$status, $userId, $resourceId, $resourceType]
     );
 }
 
