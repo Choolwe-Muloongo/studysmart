@@ -21,12 +21,28 @@ if (!$auth->isLoggedIn()) {
 
 $current_user = $auth->getCurrentUser();
 
+// Optional short-lived signed token validation (reduces URL reuse risk)
+$token = $_GET['token'] ?? '';
+$exp = isset($_GET['exp']) ? (int)$_GET['exp'] : 0;
+
 // Get video ID from request
 $video_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$video_id) {
     http_response_code(400);
     die('Invalid video ID');
+}
+
+if ($token !== '' || $exp > 0) {
+    if ($exp < time()) {
+        http_response_code(403);
+        die('Stream token expired');
+    }
+    $expected = hash_hmac('sha256', 'video|' . $video_id . '|' . $exp . '|' . session_id(), session_id());
+    if (!hash_equals($expected, (string)$token)) {
+        http_response_code(403);
+        die('Invalid stream token');
+    }
 }
 
 // Verify user has access to this video
@@ -241,4 +257,3 @@ if ($range) {
 
 exit;
 ?>
-

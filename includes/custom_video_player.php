@@ -7,6 +7,8 @@ if (!isset($view_video)) {
 }
 
 $video_id = (int)$view_video['id'];
+$stream_expires = time() + 300;
+$stream_token = hash_hmac('sha256', 'video|' . $video_id . '|' . $stream_expires . '|' . session_id(), session_id());
 $source_type = 'none';
 $youtube_id = '';
 $video_url = '';
@@ -20,7 +22,7 @@ if (!empty($view_video['video_url'])) {
         $source_type = 'external';
     }
 } elseif (!empty($view_video['file_path'])) {
-    $video_url = '../includes/video_stream.php?id=' . $video_id;
+    $video_url = '../includes/video_stream.php?id=' . $video_id . '&exp=' . $stream_expires . '&token=' . urlencode($stream_token);
     $source_type = 'stream';
 }
 ?>
@@ -43,7 +45,7 @@ if (!empty($view_video['video_url'])) {
             </button>
             <?php if ($source_type === 'stream' && $video_url !== ''): ?>
             <button class="btn btn-light btn-sm" id="saveVideoOffline" type="button" data-url="<?php echo htmlspecialchars($video_url); ?>">
-                <i class="fas fa-cloud-download-alt me-1"></i>Save Offline
+                <i class="fas fa-cloud-download-alt me-1"></i>Save for offline viewing
             </button>
             <?php endif; ?>
         </div>

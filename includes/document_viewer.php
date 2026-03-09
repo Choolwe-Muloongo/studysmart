@@ -13,7 +13,9 @@ $file_path = $view_resource['file_path'] ?? '';
 $file_ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
 
 require_once __DIR__ . '/../config/database.php';
-$doc_url = '../includes/document_stream.php?id=' . $resource_id;
+$stream_expires = time() + 300;
+$stream_token = hash_hmac('sha256', 'document|' . $resource_id . '|' . $stream_expires . '|' . session_id(), session_id());
+$doc_url = '../includes/document_stream.php?id=' . $resource_id . '&exp=' . $stream_expires . '&token=' . urlencode($stream_token);
 ?>
 <div class="custom-document-viewer mb-4">
     <div class="viewer-header d-flex justify-content-between align-items-center">
@@ -23,7 +25,7 @@ $doc_url = '../includes/document_stream.php?id=' . $resource_id;
         </div>
         <div class="d-flex gap-2">
         <button type="button" id="saveDocOffline" data-url="<?= htmlspecialchars($doc_url) ?>" class="btn btn-light btn-sm">
-            <i class="fas fa-cloud-download-alt me-2"></i>Save Offline
+            <i class="fas fa-cloud-download-alt me-2"></i>Save for offline viewing
         </button>
         <a href="javascript:history.back()" class="btn btn-light btn-sm">
             <i class="fas fa-arrow-left me-2"></i>Back
