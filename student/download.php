@@ -31,4 +31,5 @@ $items=$db->fetchAll("SELECT oc.*, c.title AS course_title, r.external_url FROM 
 <script>
 document.querySelectorAll('.offline-open').forEach(btn=>{btn.addEventListener('click', async ()=>{const notice=document.getElementById('offlineNotice'); notice.classList.add('d-none'); const localKey=btn.dataset.localKey; const online=btn.dataset.onlineUrl; const requires=btn.dataset.requiresNetwork==='1'; if(requires && !navigator.onLine){ notice.textContent='Go online to view this item.'; notice.classList.remove('d-none'); return; } try { if('caches' in window && localKey){ const hit=await caches.match(localKey); if(hit){ window.location.href=localKey; return; } } } catch(e){} window.location.href=online;});});
 </script>
+<?php require_once __DIR__ . '/includes/sw_registration.php'; ?>
 </body></html>
