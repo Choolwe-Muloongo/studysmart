@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'classes/Subscription.php';
+require_once 'includes/brand_logo.php';
 
 $db = new Database();
 $subscription = new Subscription();
@@ -35,6 +36,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/brand-logo.css">
     <style>
         * {
             margin: 0;
@@ -254,6 +256,16 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
             color: white;
         }
 
+        .install-fallback {
+            max-width: 760px;
+            margin: 20px auto 0;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 16px;
+            padding: 14px 18px;
+            text-align: left;
+        }
+
         .footer {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
@@ -280,7 +292,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
 <body>
     <nav class="navbar navbar-expand-lg nav-custom fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-graduation-cap me-2"></i>StudySmart</a>
+            <?php render_brand_logo(['href' => "index.php", 'class' => "navbar-brand", 'size' => "md", 'logo_path' => "WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -288,6 +300,11 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
                     <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+                    <li class="nav-item d-none" id="installNavItem">
+                        <button type="button" id="installButtonNav" class="btn btn-nav me-lg-2">
+                            <i class="fas fa-download me-2"></i>Install app
+                        </button>
+                    </li>
                     <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item"><a href="register.php" class="btn btn-nav">Sign Up</a></li>
                 </ul>
@@ -307,7 +324,11 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
                     <a href="login.php" class="btn btn-secondary-custom">
                         <i class="fas fa-sign-in-alt me-2"></i>Login
                     </a>
+                    <button type="button" id="installButtonHero" class="btn btn-secondary-custom d-none">
+                        <i class="fas fa-download me-2"></i>Install app
+                    </button>
                 </div>
+                <div id="installFallback" class="install-fallback d-none" role="status" aria-live="polite"></div>
             </div>
         </div>
     </section>
@@ -403,7 +424,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
-                    <h5 class="mb-3"><i class="fas fa-graduation-cap me-2"></i>StudySmart</h5>
+                    <?php render_brand_logo(['href' => "index.php", 'class' => "mb-3 text-white", 'size' => "sm", 'logo_path' => "WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
                     <p>Your trusted online learning platform for quality education.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
@@ -423,5 +444,99 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{})); }</script>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="installToast" class="toast align-items-center text-bg-success border-0" role="status" aria-live="polite" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">StudySmart installed successfully. You can now open it like an app.</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let deferredInstallPrompt = null;
+        const installButtons = [document.getElementById('installButtonNav'), document.getElementById('installButtonHero')];
+        const installNavItem = document.getElementById('installNavItem');
+        const fallbackBox = document.getElementById('installFallback');
+        const installToastElement = document.getElementById('installToast');
+
+        const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        const setInstallVisibility = (isVisible) => {
+            installButtons.forEach((button) => {
+                if (!button) {
+                    return;
+                }
+
+                button.classList.toggle('d-none', !isVisible);
+            });
+
+            if (installNavItem) {
+                installNavItem.classList.toggle('d-none', !isVisible);
+            }
+        };
+
+        const showFallbackInstructions = () => {
+            if (!fallbackBox || isStandalone()) {
+                return;
+            }
+
+            const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+            const message = isIOS
+                ? 'To install StudySmart on iOS, open Share in Safari and select “Add to Home Screen”.'
+                : 'Install is not currently available from this browser. Open your browser menu and choose “Install app” or “Add to Home screen” when available.';
+
+            fallbackBox.textContent = message;
+            fallbackBox.classList.remove('d-none');
+        };
+
+        const handleInstallClick = async () => {
+            if (!deferredInstallPrompt) {
+                showFallbackInstructions();
+                return;
+            }
+
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                fallbackBox?.classList.add('d-none');
+            } else {
+                showFallbackInstructions();
+            }
+
+            deferredInstallPrompt = null;
+            setInstallVisibility(false);
+        };
+
+        installButtons.forEach((button) => button?.addEventListener('click', handleInstallClick));
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            fallbackBox?.classList.add('d-none');
+            setInstallVisibility(true);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            setInstallVisibility(false);
+            fallbackBox?.classList.add('d-none');
+
+            if (window.bootstrap?.Toast && installToastElement) {
+                const installToast = new bootstrap.Toast(installToastElement);
+                installToast.show();
+            }
+        });
+
+        if (isStandalone()) {
+            setInstallVisibility(false);
+        } else {
+            window.setTimeout(() => {
+                if (!deferredInstallPrompt) {
+                    showFallbackInstructions();
+                }
+            }, 3500);
+        }
+    </script>
 </body>
 </html>

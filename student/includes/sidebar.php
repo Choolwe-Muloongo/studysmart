@@ -5,6 +5,13 @@
             <i class="fas fa-graduation-cap"></i>
             <span>StudySmart</span>
         </a>
+<?php
+require_once '../../includes/brand_logo.php';
+?>
+<!-- Unified Student Sidebar Template -->
+<nav class="sidebar student-sidebar">
+    <div class="sidebar-header">
+        <?php render_brand_logo(['href' => "dashboard.php", 'class' => "sidebar-brand", 'size' => "md", 'logo_path' => "../WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
         <small class="text-white-50 d-block mt-2" style="position: relative; z-index: 2;">Student Portal</small>
     </div>
     

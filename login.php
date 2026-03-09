@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'classes/Auth.php';
+require_once 'includes/brand_logo.php';
 
 // Redirect if already logged in
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
@@ -326,10 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <div class="logo-container">
-                <img src="WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png" alt="StudySmart Logo" class="logo-image">
-                <span class="logo-text">StudySmart</span>
-            </div>
+            <?php render_brand_logo(['href' => "index.php", 'class' => "logo-container", 'size' => "lg", 'logo_path' => "WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
             <p>Welcome back! Please login to your account.</p>
         </div>
         

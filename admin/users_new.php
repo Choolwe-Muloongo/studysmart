@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/brand_logo.php';
 require_once '../classes/Auth.php';
 require_once '../classes/Notification.php';
 
@@ -114,10 +115,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
     <!-- Sidebar -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <a href="dashboard.php" class="sidebar-brand">
-                <i class="fas fa-graduation-cap"></i>
-                <span>StudySmart</span>
-            </a>
+            <?php render_brand_logo(['href' => "dashboard.php", 'class' => "sidebar-brand", 'size' => "md", 'logo_path' => "../WhatsApp_Image_2025-08-16_at_09.16.01_9301e0c4-removebg-preview.png", 'alt' => "StudySmart logo"]); ?>
         </div>
         <div class="sidebar-nav">
             <div class="nav-item">
