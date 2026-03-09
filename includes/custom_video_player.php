@@ -22,7 +22,7 @@ if (!empty($view_video['video_url'])) {
         $source_type = 'external';
     }
 } elseif (!empty($view_video['file_path'])) {
-    $video_url = '../includes/video_stream.php?id=' . $video_id . '&exp=' . $stream_expires . '&token=' . urlencode($stream_token);
+    $video_url = '/includes/video_stream.php?id=' . $video_id;
     $source_type = 'stream';
 }
 ?>
@@ -195,7 +195,8 @@ if (!empty($view_video['video_url'])) {
                     };
                 });
 
-                worker.postMessage({ type: 'OFFLINE_MEDIA_SAVE', url: saveVideoOfflineBtn.dataset.url }, [channel.port2]);
+                const url = new URL(saveVideoOfflineBtn.dataset.url, window.location.origin).toString();
+                worker.postMessage({ type: 'OFFLINE_MEDIA_SAVE', url }, [channel.port2]);
                 await done;
                 saveVideoOfflineBtn.innerHTML = '<i class=\"fas fa-check me-1\"></i>Saved Offline';
             } catch (error) {

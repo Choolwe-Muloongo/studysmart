@@ -75,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="assets/css/brand-logo.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -128,18 +129,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             z-index: 2;
         }
 
-        .logo-image {
-            width: 50px;
-            height: 50px;
+        .login-header .brand-logo {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .login-header .brand-logo--lg {
+            gap: 0.75rem;
+        }
+
+        .login-header .brand-logo--lg .brand-logo__image {
+            width: 54px;
+            height: 54px;
             object-fit: contain;
             filter: brightness(1.2) contrast(1.2);
         }
 
-        .logo-text {
+        .login-header .brand-logo__text,
+        .login-header .brand-logo__fallback {
             font-weight: 800;
             font-size: 2rem;
             color: white;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .login-header .brand-logo__fallback i {
+            font-size: 0.95em;
         }
 
         .login-header p {
@@ -311,11 +326,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 padding: 30px 20px;
             }
             
-            .logo-text {
+            .login-header .brand-logo__text,
+            .login-header .brand-logo__fallback {
                 font-size: 1.5rem;
             }
-            
-            .logo-image {
+
+            .login-header .brand-logo--lg .brand-logo__image {
                 width: 40px;
                 height: 40px;
             }

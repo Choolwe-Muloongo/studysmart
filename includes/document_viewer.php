@@ -13,9 +13,7 @@ $file_path = $view_resource['file_path'] ?? '';
 $file_ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
 
 require_once __DIR__ . '/../config/database.php';
-$stream_expires = time() + 300;
-$stream_token = hash_hmac('sha256', 'document|' . $resource_id . '|' . $stream_expires . '|' . session_id(), session_id());
-$doc_url = '../includes/document_stream.php?id=' . $resource_id . '&exp=' . $stream_expires . '&token=' . urlencode($stream_token);
+$doc_url = '/includes/document_stream.php?id=' . $resource_id;
 ?>
 <div class="custom-document-viewer mb-4">
     <div class="viewer-header d-flex justify-content-between align-items-center">
@@ -349,7 +347,7 @@ fetch(docUrl).then(r=>r.text()).then(t=>textContent.textContent=t);
 const saveDocOfflineBtn = document.getElementById('saveDocOffline');
 if (saveDocOfflineBtn) {
   saveDocOfflineBtn.addEventListener('click', async () => {
-    const url = saveDocOfflineBtn.dataset.url;
+    const url = new URL(saveDocOfflineBtn.dataset.url, window.location.origin).toString();
     saveDocOfflineBtn.disabled = true;
 
     try {
