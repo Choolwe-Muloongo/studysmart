@@ -123,5 +123,6 @@ $enrolled = $db->fetchAll("SELECT c.*, u.first_name, u.last_name, COUNT(r.id) as
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../admin/assets/js/admin-script.js"></script>
+    <script src="assets/js/global-music-player.js"></script>
 </body>
 </html>
