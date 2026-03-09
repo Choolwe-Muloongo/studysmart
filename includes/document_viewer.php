@@ -23,7 +23,7 @@ $doc_url = '/includes/document_stream.php?id=' . $resource_id;
         </div>
         <div class="d-flex gap-2">
         <button type="button" id="saveDocOffline" data-url="<?= htmlspecialchars($doc_url) ?>" class="btn btn-light btn-sm">
-            <i class="fas fa-cloud-download-alt me-2"></i>Save Offline
+            <i class="fas fa-cloud-download-alt me-2"></i>Save for offline viewing
         </button>
         <a href="javascript:history.back()" class="btn btn-light btn-sm">
             <i class="fas fa-arrow-left me-2"></i>Back

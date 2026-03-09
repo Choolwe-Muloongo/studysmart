@@ -20,12 +20,28 @@ if (!$auth->isLoggedIn()) {
 
 $current_user = $auth->getCurrentUser();
 
+// Optional short-lived signed token validation (reduces URL reuse risk)
+$token = $_GET['token'] ?? '';
+$exp = isset($_GET['exp']) ? (int)$_GET['exp'] : 0;
+
 // Get document ID from request
 $doc_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$doc_id) {
     http_response_code(400);
     die('Invalid document ID');
+}
+
+if ($token !== '' || $exp > 0) {
+    if ($exp < time()) {
+        http_response_code(403);
+        die('Stream token expired');
+    }
+    $expected = hash_hmac('sha256', 'document|' . $doc_id . '|' . $exp . '|' . session_id(), session_id());
+    if (!hash_equals($expected, (string)$token)) {
+        http_response_code(403);
+        die('Invalid stream token');
+    }
 }
 
 // Verify user has access to this document
@@ -204,4 +220,3 @@ while (!feof($fp)) {
 fclose($fp);
 exit;
 ?>
-
