@@ -20,13 +20,20 @@ function ensureOfflineCatalogTable(Database $db): void {
         KEY idx_user_type_status (user_id, resource_type, status),
         KEY idx_course_id (course_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // One-time migration: normalize legacy relative cache keys to canonical absolute paths.
+    $db->execute(
+        "UPDATE student_offline_catalog
+         SET cache_key = CONCAT('/', SUBSTRING(cache_key, 4))
+         WHERE cache_key LIKE '../includes/%'"
+    );
 }
 
 function offlineCacheKey(int $resourceId, string $resourceType): string {
     if ($resourceType === 'video') {
-        return "../includes/video_stream.php?id={$resourceId}";
+        return "/includes/video_stream.php?id={$resourceId}";
     }
-    return "../includes/document_stream.php?id={$resourceId}";
+    return "/includes/document_stream.php?id={$resourceId}";
 }
 
 function offlineOnlineUrl(int $resourceId, string $resourceType): string {
